@@ -15,7 +15,10 @@ import time
 from datetime import datetime
 
 # Functions and classes
-
+class Config():
+    usrIn = False
+    rawPath = './rawData'
+    augPath = './augData'
 
 # Main program
 if __name__ == '__main__':
@@ -23,14 +26,16 @@ if __name__ == '__main__':
     print('='*20 + f' {datetime.now().replace(microsecond=0)} Program Start ' + '='*20 +'\n')
     start = time.time()
     dir_mydoc = fb.ChangeDir()
+    
 
-    usrIn = False
-    df = md.CheckEEG('./train.csv', './train_eegs.zip')
-    df.to_csv('train_matchedEEG.csv', index=False)
+    if Config.usrIn == True:
 
-    if usrIn == True:
         # Overview of train.csv
         df = fb.DescriptiveStat(file, file.split('.')[-1])
+
+        # Check if EEG records match with EEG parquet
+        df = md.CheckEEG('./train.csv', './train_eegs.zip')
+        df.to_csv('train_matchedEEG.csv', index=False)
 
     end = time.time()
 
