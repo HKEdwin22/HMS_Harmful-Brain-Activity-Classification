@@ -26,26 +26,12 @@ if __name__ == '__main__':
     start = time.time()
     dir_mydoc = fb.ChangeDir()
     
-    # Descriptive statistics for number of EEG samples for each EEG entry
-    file = Config.augPath + 'EEG_sampleNumber.csv'
-    df = fb.DescriptiveStat(file, file.split('.')[-1])
-
-    # Visualise analysis
-    df = df[(df['sample_num'] <= 10) & (df['sample_num'] >= 2)]
-    df = df.groupby(['sample_num', 'patient_id'])['eeg_id'].count().to_frame(name='eeg_entry_count')
-    df.reset_index(inplace=True)
-
-    for snum in df.sample_num:
-        dfTmp = df[df.sample_num == snum]
-        print('\n' + '='*20 + f'For sample number equals to {snum}')
-        print('\n' + '='*20 + ' Number of unique values ' + '='*20)
-        print(dfTmp.nunique())
-        print('\n' + '='*20 + ' Descriptive statistics for each column ' + '='*20 + '\n')
-        print(dfTmp.describe())
+     
     
     if Config.usrIn == True:
 
         # Overview of train.csv
+        file = Config.rawPath + 'train.csv'
         df = fb.DescriptiveStat(file, file.split('.')[-1])
 
         # Check if EEG records match with EEG parquet
