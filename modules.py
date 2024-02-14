@@ -10,22 +10,19 @@ from tqdm import tqdm
 class EDA():
     '''
     This class carries out Exploratory Data Analysis for .parquet files
-    fileName : the file outside the zip archive
-    zipPath : the path of the zip archive
     '''
         
-    def __init__(self, fileName, zipPath) -> None:
-        self.f = fileName
-        self.zPath = zipPath
-
+    def __init__(self) -> None:
         pass
 
-    def SampleRecMatch(self):
+    def SampleRecMatch(self, f, zPath):
         '''
         Check if all EEG records exist in train.csv and return a new .csv file that holds all EEG samples
+        fileName : the file outside the zip archive
+        zipPath : the path of the zip archive
         '''
 
-        df = pd.read_csv(self.f)
+        df = pd.read_csv(f)
         validEid = []
         
         for eid in tqdm(df['eeg_id'].unique()):
@@ -34,7 +31,7 @@ class EDA():
             pFile = str(eid) + '.parquet'
             
             # Read the file and return a polars dataframe
-            pldf = fb.NoUnzip(pFile, self.zPath, 'parquet')
+            pldf = fb.NoUnzip(pFile, zPath, 'parquet')
 
             # Compute the recorded duration and sampled duration
             recTime = int(df[df['eeg_id'] == eid]['eeg_label_offset_seconds'].iloc[-1]) + 50
@@ -45,33 +42,39 @@ class EDA():
         
         return df[df['eeg_id'].isin(validEid)]
     
-    def SbjSampleNum(self, file):
+    def SamplingSize(self, file):
         '''
         Check the number of samples extracted for each subject
         file: the name of the csv file
         '''
         df = pd.read_csv(file)
-        eeg, snum = [], []
+        eeg, pat, snum = [], [], []
         pid, enum = [], []
 
+        # Check the sampling size for each EEG entry
         for eid in tqdm(df['eeg_id'].unique()):
+            tmp = max(df[df.eeg_id == eid]['eeg_sub_id']) + 1
+            pat.append(df[df.eeg_id == eid]['patient_id'].unique()[0])
             eeg.append(eid)
-            snum.append(df[df.eeg_id == eid].count())
+            snum.append(tmp)
 
         dfNew = pd.DataFrame({
             'eeg_id': eeg,
+            'patient_id': pat,
             'sample num': snum
-            })
+        })
         
         dfNew.to_csv('./augData/EEG_sampleNumber.csv')
 
-        for patient in tqdm(df['patient_id'].unique()):
+        # Use the new dataframe to count the number of EEG entries for each patient
+        for patient in tqdm(dfNew['patient_id'].unique()):
+            tmp = len(dfNew[dfNew.patient_id == patient])
             pid.append(patient)
-            enum.append(df[df.patient_id == patient].count())
+            enum.append(tmp)
 
-        dfNew = pd.DataFrame({
+        dfNew2 = pd.DataFrame({
             'patient_id' : pid,
             'eeg_num' : enum
         })
 
-        dfNew.to_csv('./augData/patient_eegNumber.csv')
+        dfNew2.to_csv('./augData/patient_eegNumber.csv')
