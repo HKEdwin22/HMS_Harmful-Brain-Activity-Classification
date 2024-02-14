@@ -64,7 +64,7 @@ class EDA():
             'sample num': snum
         })
         
-        dfNew.to_csv('./augData/EEG_sampleNumber.csv')
+        dfNew.to_csv('./augData/EEG_sampleNumber.csv', index=False)
 
         # Use the new dataframe to count the number of EEG entries for each patient
         for patient in tqdm(dfNew['patient_id'].unique()):
@@ -77,4 +77,4 @@ class EDA():
             'eeg_num' : enum
         })
 
-        dfNew2.to_csv('./augData/patient_eegNumber.csv')
+        dfNew2.to_csv('./augData/patient_eegNumber.csv', index=False)
