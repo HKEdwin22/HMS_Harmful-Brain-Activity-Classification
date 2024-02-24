@@ -136,7 +136,8 @@ class EDA():
         df = df.reset_index()
         df.columns = ['expert_consensus', 'case', 'quantity']
 
-        sns.barplot(x='expert_consensus', y='quantity', hue='case', data=df)
+        gf = sns.barplot(x='expert_consensus', y='quantity', hue='case', data=df)
+        gf.axhline(7500, color='black', linestyle='--')
         plt.title('Distribution of Class Label by Case')
         plt.xlabel('Class Label')
         plt.show()
@@ -211,6 +212,9 @@ class SignalPreprocessing():
 
         dfEeg.to_csv('eid_for_training (2).csv', index=False)
 
+    def ExtractCases(case):
+        pass
+        
     def Denoising(self):
         '''
         This function serves as algorithm 1 in reference [1]
