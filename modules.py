@@ -181,22 +181,19 @@ class SignalPreprocessing():
         df = df.reset_index()
         df.to_csv('./augData/eid_for_training.csv', index=False)   
 
-    def LabelBalance(self):
+    def LabelBalance(self, file, case):
         '''
-        **** THIS FUNCTION MAY NOT BE USEFUL ****
-        Since it is natural for a signal has different labels across the time
-        and this function was implemented before knowing this truth
+        Purpose: extract subsamples that have changed brain activities and return clean raw data with ideal cases only
+        file: ./augData/rawData_with_case.csv
+        case: 'ideal'/'edge'/'proto'
         '''
 
         # Check class balance
-        rawfile = Config.rawPath + 'train.csv'
-        eegTrain = Config.augPath + 'eid_for_training.csv'
-        dfRaw = pd.read_csv(rawfile)
-        dfEeg = pd.read_csv(eegTrain)
-        targets = []
-        diff = []
+        dfRaw = pd.read_csv(file)
+        dfRaw = dfRaw[dfRaw.case == case]
+        targets, diff = [], []
 
-        for eid in dfEeg.eeg_id:
+        for eid in tqdm(dfRaw['eeg_id'].unique()):
             t = dfRaw[dfRaw.eeg_id == eid]['expert_consensus']
             t = t.to_list()
 
@@ -206,14 +203,17 @@ class SignalPreprocessing():
             else:
                 diff.append(eid)
 
-        print(f'There are {len(diff)} EEG signals having inconsistent labels. They are:\n{diff}')
+        print(f'There are {len(diff)} EEG signals having inconsistent labels.')
 
-        dfEeg.target_class = targets
+        dfDis = pd.DataFrame({'eeg_id': diff})
+        dfDis.to_csv('./augData/DiscontinueEEG.csv')
 
-        dfEeg.to_csv('eid_for_training (2).csv', index=False)
-
-    def ExtractCases(case):
-        pass
+        # Remove eeg_id that has discontinued brain activities  
+        dfDis = pd.read_csv(file)
+        dfRaw.set_index('eeg_id', inplace=True)
+        dfRaw.drop(dfDis.eeg_id.to_list(), inplace=True)
+        dfRaw = dfRaw.reset_index()
+        dfRaw.to_csv('./augData/RawData_without_DiscontinuedEEG.csv', index=False)
         
     def Denoising(self):
         '''
