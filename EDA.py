@@ -6,8 +6,6 @@ import ForBeginning as fb
 import modules as md
 import pandas as pd
 import polars as pl
-import dtale as dt
-import zipfile as zf
 
 from tqdm import tqdm
 import time
@@ -15,6 +13,7 @@ from datetime import datetime
 
 # Functions and classes
 class Config():
+    seed = 73
     usrIn = False
     rawPath = './rawData/'
     augPath = './augData/'
@@ -25,10 +24,32 @@ if __name__ == '__main__':
     print('='*20 + f' {datetime.now().replace(microsecond=0)} Program Start ' + '='*20 +'\n')
     start = time.time()
     dir_mydoc = fb.ChangeDir()
+
+    file = Config.augPath + 'rawData_with_case.csv'
+    case = 'ideal'
+
+    '''
+    Extract ideal cases
+    '''
+    df = pd.read_csv(file)
+    df = df[df.case == 'ideal']
+    df = df.groupby(['patient_id', 'eeg_id']).size()
+    df = df.to_frame().reset_index()
+    df.columns = ['patient_id', 'eeg_id', 'sample_num']
+
+
+
+
+
     
-     
+            
     
+
     if Config.usrIn == True:
+
+        '''
+        PART 1 - STUDY THE EEG DATA
+        '''
 
         # Overview of train.csv
         file = Config.rawPath + 'train.csv'
@@ -51,9 +72,29 @@ if __name__ == '__main__':
         file = Config.augPath + 'patient_eegNumber.csv'
         df = fb.DescriptiveStat(file, file.split('.')[-1], True)
 
+        # Descriptive statistics for the distribution of labels and cases
+        file = Config.rawPath + 'train.csv'
+        md.EDA.Case(file)
+        file = Config.augPath + 'rawData_with_case.csv'
+        md.EDA.LabelDistribution(file)
+
+        '''
+        PART 2 - CREATE DATASET FOR DENOISING
+        '''
+        # Create dataset for denoising
+        Spp = md.SignalPreprocessing()
+        file = Config.augPath + 'EEG_sampleNumber.csv'
+        Spp.TrainingEID(file, Config.seed)
+
+        # Check if the new dataset has duplicated information
+        file = Config.augPath + 'eid_for_training.csv'
+        df = pd.read_csv(file)
+        print(f'There are {len(df)} entries. Unique entries as below:\n')
+        print(df.nunique())
+
     end = time.time()
 
-    print('='*20 + ' Program End ' + '='*20 + '\n')
+    print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
     print(f'Execution time: {(end - start):.2f}s')
 
 pass
