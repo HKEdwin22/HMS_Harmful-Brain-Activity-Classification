@@ -3,8 +3,10 @@ import sys
 sys.path.append('C:\\Users\\spong\\Documents\\DSAI\\ConvScripts')
 
 import ForBeginning as fb
+import random
 import pandas as pd
 import polars as pl
+import pywt
 from tqdm import tqdm
 
 class EDA():
@@ -78,3 +80,48 @@ class EDA():
         })
 
         dfNew2.to_csv('./augData/patient_eegNumber.csv', index=False)
+
+class SignalPreprocessing():
+    
+    def __init__(self) -> None:
+        pass
+
+    def TrainingEID(self, file, seed):
+        '''
+        Extract eeg_id of the EEG signals that contain at least 10 subsamples and form a sample pool (A) &
+        draw one eeg_id from sample pool (A)
+        file: Config.augPath + 'EEG_sampleNumber.csv'
+        seed: Config.seed
+        '''
+
+        df = pd.read_csv(file)
+        df = df[df.sample_num >= 10]
+        random.seed(seed)
+        resultEid = []
+        
+        # Check if there are duplicated eeg_id
+        if df['eeg_id'].nunique() == len(df):
+            print('Confirmed all eeg_id are unique.')
+        else:
+            print('There are eeg_id duplicated.')
+
+        # Randomly draw one signal from each subject    
+        for pid in tqdm(df['patient_id'].unique()):
+            eid = df[df.patient_id == pid].eeg_id
+            eid = eid.to_list()
+            if len(eid) == 1:
+                resultEid.append(eid[0])
+            else:
+                rint = random.randint(0, len(eid) - 1)
+                resultEid.append(eid[rint])
+
+        df = df.set_index('eeg_id')
+        df = df.loc[resultEid]
+        df = df.reset_index()
+        df.to_csv('./augData/eid_for_training.csv', index=False)   
+
+    def Denoising(self):
+        '''
+        This function serves as algorithm 1 in reference [1]
+        '''
+        pass
