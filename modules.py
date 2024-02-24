@@ -6,7 +6,11 @@ import ForBeginning as fb
 import random
 import pandas as pd
 import polars as pl
+
 import pywt
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 from tqdm import tqdm
 
 class EDA():
@@ -81,6 +85,62 @@ class EDA():
 
         dfNew2.to_csv('./augData/patient_eegNumber.csv', index=False)
 
+    def Case(rawfile):
+        '''
+        Add column 'case' to the raw data
+        rawfile : './rawData/train.csv'
+        '''
+        
+        df = pd.read_csv(rawfile)
+        case = []
+        ideal, proto, edge = 0, 0, 0
+
+        for row in tqdm(df.index):
+            vote = df.iloc[row, 9:]
+            totalVote = vote.sum()
+            otherVote = vote.other_vote
+            ratio = round(otherVote / totalVote, 1)
+
+            if ratio == 0.0:
+                case.append('ideal')
+                ideal += 1
+            elif ratio >= 0.5:
+                case.append('proto')
+                proto += 1
+            else:
+                case.append('edge')
+                edge += 1
+
+        df['case'] = case
+        data = {'case': ['ideal', 'proto', 'edge'],
+                'quantity': [ideal, proto, edge]
+                }
+        data = pd.DataFrame(data)
+        print(data)
+
+        df.to_csv('./augData/rawData_with_case.csv', index=False)
+
+    def LabelDistribution(augfile):
+
+        '''
+        EDA: rawData_with_case.csv
+        augfile : './augPath/rawData_with_case.csv'
+        '''
+        
+        df = pd.read_csv(augfile)
+        label = df.expert_consensus.unique()
+        label = label.tolist()
+
+        df = df.groupby(['expert_consensus', 'case']).size()
+        df = df.to_frame()
+        df = df.reset_index()
+        df.columns = ['expert_consensus', 'case', 'quantity']
+
+        sns.barplot(x='expert_consensus', y='quantity', hue='case', data=df)
+        plt.title('Distribution of Class Label by Case')
+        plt.xlabel('Class Label')
+        plt.show()
+
 class SignalPreprocessing():
     
     def __init__(self) -> None:
@@ -119,6 +179,37 @@ class SignalPreprocessing():
         df = df.loc[resultEid]
         df = df.reset_index()
         df.to_csv('./augData/eid_for_training.csv', index=False)   
+
+    def LabelBalance(self):
+        '''
+        **** THIS FUNCTION MAY NOT BE USEFUL ****
+        Since it is natural for a signal has different labels across the time
+        and this function was implemented before knowing this truth
+        '''
+
+        # Check class balance
+        rawfile = Config.rawPath + 'train.csv'
+        eegTrain = Config.augPath + 'eid_for_training.csv'
+        dfRaw = pd.read_csv(rawfile)
+        dfEeg = pd.read_csv(eegTrain)
+        targets = []
+        diff = []
+
+        for eid in dfEeg.eeg_id:
+            t = dfRaw[dfRaw.eeg_id == eid]['expert_consensus']
+            t = t.to_list()
+
+            # Check if the target labels are consistant
+            if len(t) == t.count(t[0]):
+                targets.append(t[0])
+            else:
+                diff.append(eid)
+
+        print(f'There are {len(diff)} EEG signals having inconsistent labels. They are:\n{diff}')
+
+        dfEeg.target_class = targets
+
+        dfEeg.to_csv('eid_for_training (2).csv', index=False)
 
     def Denoising(self):
         '''
