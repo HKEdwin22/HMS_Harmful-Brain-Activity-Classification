@@ -24,25 +24,8 @@ if __name__ == '__main__':
     print('='*20 + f' {datetime.now().replace(microsecond=0)} Program Start ' + '='*20 +'\n')
     start = time.time()
     dir_mydoc = fb.ChangeDir()
-
-    file = Config.augPath + 'rawData_with_case.csv'
-    case = 'ideal'
-
-    '''
-    Extract ideal cases
-    '''
-    df = pd.read_csv(file)
-    df = df[df.case == 'ideal']
-    df = df.groupby(['patient_id', 'eeg_id']).size()
-    df = df.to_frame().reset_index()
-    df.columns = ['patient_id', 'eeg_id', 'sample_num']
-
-
-
-
-
-    
-            
+    spp = md.SignalPreprocessing()
+           
     
 
     if Config.usrIn == True:
@@ -77,6 +60,10 @@ if __name__ == '__main__':
         md.EDA.Case(file)
         file = Config.augPath + 'rawData_with_case.csv'
         md.EDA.LabelDistribution(file)
+
+        # Identify signals with changed brain activities
+        file = Config.augPath + 'rawData_with_case.csv'
+        spp.LabelBalance(file, 'ideal')
 
         '''
         PART 2 - CREATE DATASET FOR DENOISING
