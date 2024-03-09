@@ -118,13 +118,13 @@ class EDA():
         data = pd.DataFrame(data)
         print(data)
 
-        df.to_csv('./augData/rawData_with_case.csv', index=False)
+        df.to_csv('./augData/rawData_with_cases.csv', index=False)
 
     def LabelDistribution(augfile):
 
         '''
-        EDA: rawData_with_case.csv
-        augfile : './augPath/rawData_with_case.csv'
+        EDA: rawData_with_cases.csv
+        augfile : './augPath/rawData_with_cases.csv'
         '''
         
         df = pd.read_csv(augfile)
@@ -184,24 +184,27 @@ class SignalPreprocessing():
     def LabelBalance(self, file, case):
         '''
         Purpose: extract subsamples that have changed brain activities and return clean raw data with ideal cases only
-        file: ./augData/rawData_with_case.csv
+        file: ./augData/rawData_with_cases.csv
         case: 'ideal'/'edge'/'proto'
         '''
 
         # Check class balance
         dfRaw = pd.read_csv(file)
         dfRaw = dfRaw[dfRaw.case == case]
-        targets, diff = [], []
+        diff = []
 
         for eid in tqdm(dfRaw['eeg_id'].unique()):
             t = dfRaw[dfRaw.eeg_id == eid]['expert_consensus']
             t = t.to_list()
 
             # Check if the target labels are consistant
-            if len(t) == t.count(t[0]):
-                targets.append(t[0])
-            else:
+            if case == 'ideal' and len(t) != t.count(t[0]):
                 diff.append(eid)
+            elif case == 'proto':
+                if 'Other' in t == False:
+                    diff.append(eid)
+                elif t.count('Other') != len(t):
+                    diff.append(eid)
 
         print(f'There are {len(diff)} EEG signals having inconsistent labels.')
 
@@ -209,7 +212,6 @@ class SignalPreprocessing():
         dfDis.to_csv('./augData/DiscontinueEEG.csv')
 
         # Remove eeg_id that has discontinued brain activities  
-        dfDis = pd.read_csv(file)
         dfRaw.set_index('eeg_id', inplace=True)
         dfRaw.drop(dfDis.eeg_id.to_list(), inplace=True)
         dfRaw = dfRaw.reset_index()
