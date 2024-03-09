@@ -25,7 +25,33 @@ if __name__ == '__main__':
     start = time.time()
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
-           
+
+    '''
+    Randomly draw 1000 signals for each class
+    '''
+    # file = Config.augPath + 'rawData_without_DiscontinuedEEG.csv'
+    # dfRaw = pd.read_csv(file)
+    # c = 'GPD'
+
+    # # Create a dataframe to hold the three listed columns
+    # dfRaw = dfRaw[dfRaw.expert_consensus == c]
+    # dfRaw.drop(dfRaw.columns[9:], axis=1, inplace=True)
+    # df = dfRaw.groupby(['patient_id', 'eeg_id']).size()
+    # df = df.to_frame().reset_index()
+    # df.columns = ['patient_id', 'eeg_id', 'subsample_num']
+
+    # # Create a dataframe to hold the 1000 subsamples
+    # Drawn1000 = df[df.subsample_num == 1]['eeg_id']
+    # Drawn1000 = Drawn1000.to_list()
+    # soloSs = len(Drawn1000)
+    
+    # # Drop the drawn samples from the original dataframe
+    # dfRaw.set_index('eeg_id', inplace=True)
+    # dfWanted = dfRaw.loc[Drawn1000]
+    # dfRaw.drop(Drawn1000, inplace=True)
+    # dfRaw = dfRaw.reset_index()
+
+    # random.randint(0, len(dfRaw), 1000 - solo)
     
 
     if Config.usrIn == True:
@@ -58,12 +84,16 @@ if __name__ == '__main__':
         # Descriptive statistics for the distribution of labels and cases
         file = Config.rawPath + 'train.csv'
         md.EDA.Case(file)
-        file = Config.augPath + 'rawData_with_case.csv'
+        file = Config.augPath + 'rawData_with_cases.csv'
         md.EDA.LabelDistribution(file)
 
-        # Identify signals with changed brain activities
-        file = Config.augPath + 'rawData_with_case.csv'
+        '''
+        PART 2 - CREATE A BALANCE TRAINING SET
+        '''
+        # Identify & remove signals with changed brain activities & keep 'ideal' case
+        file = Config.augPath + 'rawData_with_cases.csv'
         spp.LabelBalance(file, 'ideal')
+        spp.LabelBalance(file, 'proto')
 
         '''
         PART 2 - CREATE DATASET FOR DENOISING
