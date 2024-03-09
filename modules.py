@@ -137,7 +137,8 @@ class EDA():
         df.columns = ['expert_consensus', 'case', 'quantity']
 
         gf = sns.barplot(x='expert_consensus', y='quantity', hue='case', data=df)
-        gf.axhline(7500, color='black', linestyle='--')
+        gf.axhline(7971, color='black', linestyle='--')
+        plt.text(5.6, 7971, '7971', verticalalignment='center')
         plt.title('Distribution of Class Label by Case')
         plt.xlabel('Class Label')
         plt.show()
@@ -147,40 +148,27 @@ class SignalPreprocessing():
     def __init__(self) -> None:
         pass
 
-    def TrainingEID(self, file, seed, newfile):
+    def TrainingSet(self, file, seed, newfile):
         '''
-        Extract eeg_id of the EEG signals that contain at least 10 subsamples and form a sample pool (A) &
-        draw one eeg_id from sample pool (A)
-        file: Config.augPath + 'EEG_sampleNumber.csv'
+        Construct training set with 1000 subsamples per type
+        file: Config.augPath + 'rawData (ideal & proto)_without_DiscontinuedEEG.csv'
         seed: Config.seed
-        newfile : name of the new file
-        '''
-
-        df = pd.read_csv(file)
-        df = df[df.sample_num >= 10]
-        random.seed(seed)
-        resultEid = []
+        newfile : name of the new file (Config.augPath + 'thousand_subsamples_per_type.csv')
+        '''       
         
-        # Check if there are duplicated eeg_id
-        if df['eeg_id'].nunique() == len(df):
-            print('Confirmed all eeg_id are unique.')
-        else:
-            print('There are eeg_id duplicated.')
+        dfRaw = pd.read_csv(file)
+        random.seed(seed)
+        df = pd.DataFrame().reindex_like(dfRaw)    
 
-        # Randomly draw one signal from each subject    
-        for pid in tqdm(df['patient_id'].unique()):
-            eid = df[df.patient_id == pid].eeg_id
-            eid = eid.to_list()
-            if len(eid) == 1:
-                resultEid.append(eid[0])
-            else:
-                rint = random.randint(0, len(eid) - 1)
-                resultEid.append(eid[rint])
+        # Create a dataframe to hold the 1000 subsamples
+        for sampleType in dfRaw['expert_consensus'].unique():
+            dfSpecificType = dfRaw[dfRaw.expert_consensus == sampleType]
+            dfSpecificType = dfSpecificType.reset_index(drop=True)
+            randomIdx = [random.choice(dfSpecificType.index) for _ in range(1000)]
+            df = pd.concat([df, dfSpecificType.iloc[randomIdx, :]], ignore_index=True, sort=False)
 
-        df = df.set_index('eeg_id')
-        df = df.loc[resultEid]
-        df = df.reset_index()
-        df.to_csv(newfile, index=False)   
+        df.dropna(inplace=True)
+        df.to_csv(newfile) 
 
     def LabelBalance(self, file, case):
         '''
