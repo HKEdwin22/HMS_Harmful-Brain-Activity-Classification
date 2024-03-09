@@ -147,12 +147,13 @@ class SignalPreprocessing():
     def __init__(self) -> None:
         pass
 
-    def TrainingEID(self, file, seed):
+    def TrainingEID(self, file, seed, newfile):
         '''
         Extract eeg_id of the EEG signals that contain at least 10 subsamples and form a sample pool (A) &
         draw one eeg_id from sample pool (A)
         file: Config.augPath + 'EEG_sampleNumber.csv'
         seed: Config.seed
+        newfile : name of the new file
         '''
 
         df = pd.read_csv(file)
@@ -179,7 +180,7 @@ class SignalPreprocessing():
         df = df.set_index('eeg_id')
         df = df.loc[resultEid]
         df = df.reset_index()
-        df.to_csv('./augData/eid_for_training.csv', index=False)   
+        df.to_csv(newfile, index=False)   
 
     def LabelBalance(self, file, case):
         '''
