@@ -1,10 +1,15 @@
 # Import libraries
-import sys, os
+import sys
 sys.path.append('C:\\Users\\spong\\Documents\\DSAI\\ConvScripts')
                 
 import ForBeginning as fb
+
 import modules as md
 import pandas as pd
+
+from tqdm import tqdm
+import time
+from datetime import datetime
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -83,3 +88,8 @@ if __name__ == '__main__':
     file = Config.augPath + 'rawData (ideal & proto)_without_DiscontinuedEEG.csv'
     newFile = Config.augPath + 'thousand_subsamples_per_type.csv'
     spp.TrainingSet(file, Config.seed, newFile)
+
+
+    end = time.time()
+    print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
+    print(f'Execution time: {(end - start):.2f}s')

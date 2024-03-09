@@ -1,5 +1,5 @@
 # Import libraries
-import sys, os
+import sys
 sys.path.append('C:\\Users\\spong\\Documents\\DSAI\\ConvScripts')
                 
 import ForBeginning as fb
