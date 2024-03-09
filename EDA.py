@@ -3,6 +3,7 @@ import sys, os
 sys.path.append('C:\\Users\\spong\\Documents\\DSAI\\ConvScripts')
                 
 import ForBeginning as fb
+
 import modules as md
 import pandas as pd
 import polars as pl
@@ -10,6 +11,9 @@ import polars as pl
 from tqdm import tqdm
 import time
 from datetime import datetime
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Functions and classes
 class Config():
@@ -26,82 +30,15 @@ if __name__ == '__main__':
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
 
-    '''
-    Randomly draw 1000 signals for each class
-    '''
-    # file = Config.augPath + 'rawData_without_DiscontinuedEEG.csv'
-    # dfRaw = pd.read_csv(file)
-    # c = 'GPD'
-
-    # # Create a dataframe to hold the three listed columns
-    # dfRaw = dfRaw[dfRaw.expert_consensus == c]
-    # dfRaw.drop(dfRaw.columns[9:], axis=1, inplace=True)
-    # df = dfRaw.groupby(['patient_id', 'eeg_id']).size()
-    # df = df.to_frame().reset_index()
-    # df.columns = ['patient_id', 'eeg_id', 'subsample_num']
-
-    # # Create a dataframe to hold the 1000 subsamples
-    # Drawn1000 = df[df.subsample_num == 1]['eeg_id']
-    # Drawn1000 = Drawn1000.to_list()
-    # soloSs = len(Drawn1000)
-    
-    # # Drop the drawn samples from the original dataframe
-    # dfRaw.set_index('eeg_id', inplace=True)
-    # dfWanted = dfRaw.loc[Drawn1000]
-    # dfRaw.drop(Drawn1000, inplace=True)
-    # dfRaw = dfRaw.reset_index()
-
-    # random.randint(0, len(dfRaw), 1000 - solo)
-    
-
     if Config.usrIn == True:
-
+        
         '''
-        PART 1 - STUDY THE EEG DATA
-        '''
-
-        # Overview of train.csv
-        file = Config.rawPath + 'train.csv'
-        df = fb.DescriptiveStat(file, file.split('.')[-1])
-
-        # Check if EEG records match with EEG parquet
-        eda = md.EDA()
-        df = eda.SampleRecMatch('./train.csv', './train_eegs.zip')
-        df.to_csv('train_matchedEEG.csv', index=False)
-
-        # Count EEG sample number for each EEG id & EEG record number for each subject
-        eda = md.EDA()
-        eda.SamplingSize(Config.rawPath + 'train.csv')
-
-        # Descriptive statistics for number of EEG samples for each EEG entry
-        file = Config.augPath + 'EEG_sampleNumber.csv'
-        df = fb.DescriptiveStat(file, file.split('.')[-1], True)
-
-        # Descriptive statistics for number of EEG entry for each subject
-        file = Config.augPath + 'patient_eegNumber.csv'
-        df = fb.DescriptiveStat(file, file.split('.')[-1], True)
-
-        # Descriptive statistics for the distribution of labels and cases
-        file = Config.rawPath + 'train.csv'
-        md.EDA.Case(file)
-        file = Config.augPath + 'rawData_with_cases.csv'
-        md.EDA.LabelDistribution(file)
-
-        '''
-        PART 2 - CREATE A BALANCE TRAINING SET
-        '''
-        # Identify & remove signals with changed brain activities & keep 'ideal' case
-        file = Config.augPath + 'rawData_with_cases.csv'
-        spp.LabelBalance(file, 'ideal')
-        spp.LabelBalance(file, 'proto')
-
-        '''
-        PART 2 - CREATE DATASET FOR DENOISING
+        PART 3 - CREATE DATASET FOR DENOISING
         '''
         # Create dataset for denoising
-        Spp = md.SignalPreprocessing()
         file = Config.augPath + 'EEG_sampleNumber.csv'
-        Spp.TrainingEID(file, Config.seed)
+        newf = Config.augPath + 'eid_for_training.csv'
+        spp.TrainingEID(file, Config.seed, newf)
 
         # Check if the new dataset has duplicated information
         file = Config.augPath + 'eid_for_training.csv'
