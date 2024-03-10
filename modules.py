@@ -224,7 +224,7 @@ class SignalPreprocessing():
             z0 = int(200*50/2 + s0*200 - 1000)
             z1 = int(200*50/2 + s0*200 + 1000)
 
-            pFile = nPath + str(eid) + '.parquet'
+            pFile = str(eid) + '.parquet'
             newFile = nPath + f'{eid}_{subsample}.parquet'
             dfSignal = fb.NoUnzip(pFile, zPath, 'parquet')
         
