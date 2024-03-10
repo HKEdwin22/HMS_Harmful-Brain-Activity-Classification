@@ -21,6 +21,7 @@ class Config():
     usrIn = False
     rawPath = './rawData/'
     augPath = './augData/'
+    ExtEEGs = augPath + 'Extracted_EEGs/'
 
 # Main program
 if __name__ == '__main__':
@@ -30,10 +31,17 @@ if __name__ == '__main__':
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
 
+    
+
     if Config.usrIn == True:
         
         '''
         PART 3 - CREATE DATASET FOR DENOISING
+        '''
+
+
+        '''
+        PART 3 - CREATE DATASET FOR DENOISING (ABANDONED)
         '''
         # Create dataset for denoising
         file = Config.augPath + 'EEG_sampleNumber.csv'
@@ -47,7 +55,6 @@ if __name__ == '__main__':
         print(df.nunique())
 
     end = time.time()
-
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
     print(f'Execution time: {(end - start):.2f}s')
 
