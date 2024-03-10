@@ -206,6 +206,31 @@ class SignalPreprocessing():
         dfRaw = dfRaw.reset_index()
         dfRaw.to_csv('./augData/RawData_without_DiscontinuedEEG.csv', index=False)
         
+    def Extract10s(self, zPath, file1):
+        '''
+        Extract the ten-second that the experts annotated and save the extracted signal to a new file
+        zPath: the path of the zip archive
+        file1: thousand_subsamples_per_type.csv
+        '''
+        
+        df = pd.read_csv(file1)
+
+        for idx in tqdm(df.index):
+            eid = df.iloc[idx, 0]
+            subsample = df.iloc[idx, 1]
+            t0 = df.iloc[idx, 2]
+            s0 = 200*t0
+            z0 = int(200*50/2 + s0 - 1000)
+            z1 = int(200*50/2 + s0 + 999)
+
+            pFile = str(eid) + '.parquet'
+            newFile = Config.ExtEEGs + str(eid) + f'_{subsample}.parquet'
+            dfSignal = fb.NoUnzip(pFile, zPath, 'parquet')
+        
+            # Select the 10-second signals in the middle of the subsample
+            selectedRow = dfSignal.slice(z0, z1)
+            selectedRow.write_parquet(newFile)
+
     def Denoising(self):
         '''
         This function serves as algorithm 1 in reference [1]
