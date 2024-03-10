@@ -89,6 +89,11 @@ if __name__ == '__main__':
     newFile = Config.augPath + 'thousand_subsamples_per_type.csv'
     spp.TrainingSet(file, Config.seed, newFile)
 
+    # Extract the central 10-second of each subsample
+    zPath = Config.rawPath + 'train_eegs.zip'
+    file1 = Config.augPath + 'thousand_subsamples_per_type.csv'
+    spp.Extract10s(zPath, file1)
+
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
