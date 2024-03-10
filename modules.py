@@ -164,11 +164,12 @@ class SignalPreprocessing():
         for sampleType in dfRaw['expert_consensus'].unique():
             dfSpecificType = dfRaw[dfRaw.expert_consensus == sampleType]
             dfSpecificType = dfSpecificType.reset_index(drop=True)
-            randomIdx = [random.choice(dfSpecificType.index) for _ in range(1000)]
-            df = pd.concat([df, dfSpecificType.iloc[randomIdx, :]], ignore_index=True, sort=False)
+            idxList = dfSpecificType.index
+            idxList = random.sample(idxList.to_list(), 1000)
+            df = pd.concat([df, dfSpecificType.iloc[idxList, :]], ignore_index=True, sort=False)
 
         df.dropna(inplace=True)
-        df.to_csv(newfile) 
+        df.to_csv(newfile, index=False) 
 
     def LabelBalance(self, file, case):
         '''
