@@ -281,24 +281,20 @@ class Denoising():
                 
                 # Step 1 - estimate the approximated and multilelvel detailed coefficients
                 db4 = pywt.Wavelet('db4')
-                L = pywt.wavedecn(x, db4, mode='periodic', level=5)
+                L = pywt.wavedec(x, db4, mode='periodic', level=5)
 
                 # Step 2, 3 & 4 - compute sigma value, estimate the threshold & restore the signal
                 F = [L[0]]
                 for i in range(1,len(L)):
-                    filteredSignal = {'ad': self.Thresholding(L[i]['ad'], x), 
-                                      'da': self.Thresholding(L[i]['da'], x), 
-                                      'dd': self.Thresholding(L[i]['dd'], x)
-                                      }
-                    F.append(filteredSignal)
+                    F.append(self.Thresholding(L[i], x))
 
-                Rsignal = pywt.waverecn(F, db4, mode='periodic')
+                Rsignal = pywt.waverec(F, db4, mode='periodic')
                 
                 # Step 5 - Save the restored signal as a numpy file
                 newFile = Config.DenoisedEEGs + f'{eid}_{subsample}_denoised.npy'
                 np.save(newFile, Rsignal)
 
-        def VisualiseSignals(self,eidSample):
+        def VisualiseSignals(self, eidSample):
             '''
             Visualise the signals before and after denoising
             eidsample: sample ID (e.g. '525664301_444')
