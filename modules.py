@@ -222,8 +222,8 @@ class SignalPreprocessing():
             subsample = df.iloc[idx, 1]
             t0 = df.iloc[idx, 2]
             s0 = 200*t0
-            z0 = int(200*50/2 + s0*200 - 1000)
-            z1 = int(200*50/2 + s0*200 + 1000)
+            z0 = int(200*50/2 + s0 - 1000)
+            z1 = int(200*50/2 + s0 + 1000)
 
             pFile = str(eid) + '.parquet'
             newFile = nPath + f'{eid}_{subsample}.parquet'
