@@ -93,9 +93,12 @@ if __name__ == '__main__':
     file = Config.augPath + './thousand_subsamples_per_type.csv' # input 1
     denoise.DenoiseProcess(file)
 
+    # Visualise the denoising results
+    sample = '554968692_24'
+    denoise.VisualiseSignals(sample)
 
 
-    
+
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
     print(f'Execution time: {(end - start):.2f}s')
