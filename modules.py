@@ -19,6 +19,7 @@ import seaborn as sns
 class Config():
     seed = 73
     usrIn = False
+    sampleSignals = './SampleSignals/'
     rawPath = './rawData/'
     augPath = './augData/'
     ExtEEGs = augPath + 'Extracted_EEGs/'
@@ -295,5 +296,32 @@ class Denoising():
                 
                 # Step 5 - Save the restored signal as a numpy file
                 newFile = Config.DenoisedEEGs + f'{eid}_{subsample}_denoised.npy'
-                with open(newFile, 'wb') as f:
-                    np.save(f, Rsignal)
+                np.save(newFile, Rsignal)
+
+        def VisualiseSignals(self,eidSample):
+            '''
+            Visualise the signals before and after denoising
+            eidsample: sample ID (e.g. '525664301_444')
+            '''
+
+            fileRaw = Config.ExtEEGs + f'{eidSample}.parquet'
+            fileDenoise = Config.DenoisedEEGs + f'{eidSample}_denoised.npy'
+            signalRaw = pl.read_parquet(fileRaw).to_pandas()
+            signalDenoise = np.load(fileDenoise)
+
+            features = signalRaw.columns
+
+            for f in range(len(features)):
+                file = Config.sampleSignals + f'{eidSample}_{features[f]}.jpg'
+                plt.plot(signalRaw[features[f]], color='black', label='Raw Signal')
+                plt.plot(signalDenoise[:,f], color='red', label='Denoised Signal')
+                plt.title(features[f])
+                plt.xlabel('Samples')
+                plt.ylabel('Amplitude')
+                plt.savefig(file)
+                plt.clf()
+
+            plt.plot(signalRaw, color='black')
+            plt.plot(signalDenoise)
+            plt.title(f'Raw and Denoised Signals for {eidSample}')
+            plt.savefig(Config.sampleSignals + f'{eidSample}.jpg')
