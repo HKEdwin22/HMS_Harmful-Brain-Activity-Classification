@@ -31,7 +31,36 @@ if __name__ == '__main__':
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
 
-    
+    # Extract the central 10-second of each subsample
+    zPath = Config.rawPath + 'train_eegs2.zip'
+    file1 = Config.augPath + 'thousand_subsamples_per_type.csv'
+    nPath = Config.ExtEEGs
+    spp.Extract10s(zPath, file1, nPath)
+
+    '''
+    Denoising EEG subsamples
+    '''
+    # import pywt
+    # from math import sqrt, log10
+
+    # file = Config.augPath + './thousand_subsamples_per_type.csv'
+    # df = pd.read_csv(file)
+
+    # for rows in tqdm(df.index):
+    #     eid = df.iloc[rows, 0]
+    #     subsample = df.iloc[rows, 1]
+    #     pFile = Config.ExtEEGs + f'{eid}_{subsample}.parquet'
+    #     x = pl.read_parquet(pFile).to_pandas()
+    #     x = x.iloc[:, :-1]
+        
+    #     # Step 1 - estimate the approximated and multilelvel detailed coefficients
+    #     db4 = pywt.Wavelet('db4')
+    #     cA4, cD5, cD4, cD3, cD2, cD1 = pywt.wavedec(x, db4, mode='periodic', level=5)
+
+    #     # Step 2 - compute sigma value & estimate the threshold
+    #     sigma = fb.MAD(cD5)/.6745
+    #     threshold = sigma * sqrt(2*log10(len(x)))
+    #     fCoeff = pywt.threshold(x, threshold, 'soft')
 
     if Config.usrIn == True:
         
