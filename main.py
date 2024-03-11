@@ -5,6 +5,7 @@ sys.path.append('C:\\Users\\spong\\Documents\\DSAI\\ConvScripts')
 import ForBeginning as fb
 
 import modules as md
+from modules import Config
 import pandas as pd
 
 from tqdm import tqdm
@@ -13,13 +14,6 @@ from datetime import datetime
 
 import seaborn as sns
 import matplotlib.pyplot as plt
-
-# Configurations
-class Config():
-    seed = 73
-    usrIn = False
-    rawPath = './rawData/'
-    augPath = './augData/'
 
 # Main program
 if __name__ == '__main__':
@@ -89,12 +83,19 @@ if __name__ == '__main__':
     newFile = Config.augPath + 'thousand_subsamples_per_type.csv'
     spp.TrainingSet(file, Config.seed, newFile)
 
-    # Extract the central 10-second of each subsample
     zPath = Config.rawPath + 'train_eegs.zip'
     file1 = Config.augPath + 'thousand_subsamples_per_type.csv'
-    spp.Extract10s(zPath, file1)
+    nPath = Config.ExtEEGs
+    spp.Extract10s(zPath, file1, nPath)
+
+    # Denoising EEG subsamples
+    denoise = md.Denoising()
+    file = Config.augPath + './thousand_subsamples_per_type.csv' # input 1
+    denoise.DenoiseProcess(file)
 
 
+
+    
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
     print(f'Execution time: {(end - start):.2f}s')
