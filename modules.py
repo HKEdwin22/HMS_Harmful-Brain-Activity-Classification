@@ -6,12 +6,23 @@ import ForBeginning as fb
 import random
 import pandas as pd
 import polars as pl
+import numpy as np
 
 import pywt
+from math import sqrt, log10
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tqdm import tqdm
+
+# Configurations
+class Config():
+    seed = 73
+    usrIn = False
+    rawPath = './rawData/'
+    augPath = './augData/'
+    ExtEEGs = augPath + 'Extracted_EEGs/'
+    DenoisedEEGs = augPath + 'Denoised_EEGs/'
 
 class EDA():
     '''
@@ -223,18 +234,66 @@ class SignalPreprocessing():
             t0 = df.iloc[idx, 2]
             s0 = 200*t0
             z0 = int(200*50/2 + s0 - 1000)
-            z1 = int(200*50/2 + s0 + 1000)
 
             pFile = str(eid) + '.parquet'
             newFile = nPath + f'{eid}_{subsample}.parquet'
             dfSignal = fb.NoUnzip(pFile, zPath, 'parquet')
         
             # Select the 10-second signals in the middle of the subsample
-            selectedRow = dfSignal.slice(z0, z1)
+            selectedRow = dfSignal.slice(z0, 2000)
             selectedRow.write_parquet(newFile)
 
-    def Denoising(self):
+class Denoising():
         '''
-        This function serves as algorithm 1 in reference [1]
+        This class serves as algorithm 1 in reference [1]
         '''
-        pass
+        def __init__(self) -> None:
+            pass
+
+        def Thresholding(self, wave, oriSignal, mode='soft'):
+            '''
+            Compute sigma & threshold value. Return filtered Coefficient which are greater than the threshold.
+            wave: detail coefficient (e.g. cD5)
+            oriSignal: input signal x
+            mode: hard or soft (for thresholding)
+            '''
+
+            sigma = fb.MAD(wave)/.6745
+            threshold = sigma * sqrt(2*log10(len(oriSignal)))
+            fCoeff = pywt.threshold(wave, threshold, mode=mode)
+
+            return fCoeff
+
+        def DenoiseProcess(self, file):
+            '''
+            Algorithm 1 - Denoising EEG subsamples
+            file: dataset (thousand_subsamples_per_type.csv)
+            '''
+            df = pd.read_csv(file)
+
+            for rows in tqdm(df.index):
+                eid = df.iloc[rows, 0]
+                subsample = df.iloc[rows, 1]
+                pFile = Config.ExtEEGs + f'{eid}_{subsample}.parquet'
+                x = pl.read_parquet(pFile).to_pandas()
+                x = x.iloc[:, :-1]
+                
+                # Step 1 - estimate the approximated and multilelvel detailed coefficients
+                db4 = pywt.Wavelet('db4')
+                L = pywt.wavedecn(x, db4, mode='periodic', level=5)
+
+                # Step 2, 3 & 4 - compute sigma value, estimate the threshold & restore the signal
+                F = [L[0]]
+                for i in range(1,len(L)):
+                    filteredSignal = {'ad': self.Thresholding(L[i]['ad'], x), 
+                                      'da': self.Thresholding(L[i]['da'], x), 
+                                      'dd': self.Thresholding(L[i]['dd'], x)
+                                      }
+                    F.append(filteredSignal)
+
+                Rsignal = pywt.waverecn(F, db4, mode='periodic')
+                
+                # Step 5 - Save the restored signal as a numpy file
+                newFile = Config.DenoisedEEGs + f'{eid}_{subsample}_denoised.npy'
+                with open(newFile, 'wb') as f:
+                    np.save(f, Rsignal)
