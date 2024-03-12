@@ -24,8 +24,43 @@ if __name__ == '__main__':
     start = time.time()
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
+    denoise = md.Denoising()
 
+
+    # file = Config.augPath + 'thousand_subsamples_per_type.csv'
+    # denoise.FrequencyFiltration(file)
+
+    '''
+    Plot the Power Spectrum
+    '''
+    from scipy.fft import fft, fftfreq, ifft
     
+
+    eidsample = '1155336043_3'
+    
+    file = Config.ExtEEGs + f'{eidsample}.parquet'
+    signalRaw = pl.read_parquet(file).to_pandas()
+    signalRaw = signalRaw.iloc[:,:-1]
+    
+    fileFiltered = Config.PowerSpectrum + f'{eidsample}_PowerSpectrum.npy'
+    SProcessed = np.load(fileFiltered)
+
+    features = signalRaw.columns
+    Sfreq = fftfreq(2000, d=1/200)
+    idx = np.argsort(Sfreq)
+    
+    for f in range(len(features)):
+        rawPower = 10*np.log10(np.abs(signalRaw[features[f]])**2)
+        proPower = 10*np.log10(np.abs(SProcessed[:, f])**2)
+
+        plt.plot(Sfreq[idx], rawPower[idx], color='black')
+        plt.plot(Sfreq[idx], proPower[idx], color='red')
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Power (μV²)")
+        plt.title(f"EEG Power Spectrum of {eidsample}")
+        plt.grid(False)
+        plt.show()
+
 
     if Config.usrIn == True:
         '''
@@ -43,7 +78,7 @@ if __name__ == '__main__':
         print(df.nunique())
 
     end = time.time()
-    print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
+    print('='*20 + f' Program End {datetime.now().replace(microsecond=0)} ' + '='*20)
     print(f'Execution time: {(end - start):.2f}s')
 
 pass
