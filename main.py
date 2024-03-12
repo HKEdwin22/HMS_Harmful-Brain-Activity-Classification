@@ -97,6 +97,9 @@ if __name__ == '__main__':
     sample = '554968692_24'
     denoise.VisualiseSignals(sample)
 
+    # Algorithm 2 - Frequency filtration
+    file = Config.augPath + 'thousand_subsamples_per_type.csv'
+    denoise.FrequencyFiltration(file)
 
 
     end = time.time()
