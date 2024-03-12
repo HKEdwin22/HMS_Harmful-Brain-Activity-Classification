@@ -9,8 +9,9 @@ import polars as pl
 import numpy as np
 
 import pywt
-from math import sqrt, log10
 from tqdm import tqdm
+from math import sqrt, log10
+from scipy.fft import fft, fftfreq, ifft
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -24,6 +25,8 @@ class Config():
     augPath = './augData/'
     ExtEEGs = augPath + 'Extracted_EEGs/'
     DenoisedEEGs = augPath + 'Denoised_EEGs/'
+    FilteredFreq = augPath + 'FilteredFreq/'
+    PowerSpectrum = augPath + 'PowerSpectrum/'
 
 class EDA():
     '''
@@ -294,23 +297,30 @@ class Denoising():
                 newFile = Config.DenoisedEEGs + f'{eid}_{subsample}_denoised.npy'
                 np.save(newFile, Rsignal)
 
-        def VisualiseSignals(self, eidSample):
+        def VisualiseSignals(self, eidSample, mode='denoised'):
             '''
             Visualise the signals before and after denoising
             eidsample: sample ID (e.g. '525664301_444')
+            mode: denoised / filtrated
             '''
 
             fileRaw = Config.ExtEEGs + f'{eidSample}.parquet'
-            fileDenoise = Config.DenoisedEEGs + f'{eidSample}_denoised.npy'
             signalRaw = pl.read_parquet(fileRaw).to_pandas()
-            signalDenoise = np.load(fileDenoise)
-
+            
+            # Filtrated signals have excluded the last EKG column
+            if mode == 'filtrated':
+                signalRaw = signalRaw.iloc[:, :-1]
+                fileProcessed = Config.FilteredFreq + f'{eidSample}_{mode}.npy'
+            elif mode == 'denoised':
+                fileProcessed = Config.DenoisedEEGs + f'{eidSample}_{mode}.npy'
+            
+            signalProcessed = np.load(fileProcessed)
             features = signalRaw.columns
 
             for f in range(len(features)):
                 file = Config.sampleSignals + f'{eidSample}_{features[f]}.jpg'
                 plt.plot(signalRaw[features[f]], color='black', label='Raw Signal')
-                plt.plot(signalDenoise[:,f], color='red', label='Denoised Signal')
+                plt.plot(signalProcessed[:,f], color='red', label='Denoised Signal')
                 plt.title(features[f])
                 plt.xlabel('Samples')
                 plt.ylabel('Amplitude')
@@ -318,6 +328,43 @@ class Denoising():
                 plt.clf()
 
             plt.plot(signalRaw, color='black')
-            plt.plot(signalDenoise)
+            plt.plot(signalProcessed)
             plt.title(f'Raw and Denoised Signals for {eidSample}')
             plt.savefig(Config.sampleSignals + f'{eidSample}.jpg')
+
+        def FrequencyFiltration(self, file):
+            '''
+            Algorithm 2 - Frequency filtration
+            file: input file ('thousand_subsamples_per_type.csv')
+            '''
+
+            df = pd.read_csv(file)
+            df = df.iloc[:, :2]
+            Sfreq = fftfreq(2000, d=1/200)
+
+            for row in tqdm(df.index):
+                filteredSignal = []
+                powerSpectrum = []
+
+                eid = df.iloc[row, 0]
+                subsample = df.iloc[row, 1]
+                
+                file = Config.DenoisedEEGs + f'{eid}_{subsample}_denoised.npy'
+                x = np.load(file)
+                x = x[:,:-1]
+                m, n = x.shape
+                x = np.reshape(x, (n,m))
+                x = fft(x)
+
+                for i in x:
+                    i[(np.abs(Sfreq) > 30) | (np.abs(Sfreq) < 0.1)] = 0
+                    powerSpectrum.append(i)
+                    filteredSignal.append(ifft(i))
+
+                filteredSignal = np.reshape(filteredSignal, (m,n))
+                powerSpectrum = np.reshape(powerSpectrum, (m,n))
+
+                newFile = Config.FilteredFreq + f'{eid}_{subsample}_filtrated.npy'
+                np.save(newFile, filteredSignal)
+                newFile = Config.PowerSpectrum + f'{eid}_{subsample}_PowerSpectrum.npy'
+                np.save(newFile, powerSpectrum)
