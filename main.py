@@ -93,17 +93,14 @@ if __name__ == '__main__':
     file = Config.augPath + './thousand_subsamples_per_type.csv' # input 1
     denoise.DenoiseProcess(file)
 
-    # Visualise the denoising results
-    visualise = md.VisualiseSignal()
-    sample = '554968692_24'
-    visualise.TimeDomainGraph(sample)
-
     # Algorithm 2 - Frequency filtration
+    w, f = 130, 80
     file = Config.augPath + 'thousand_subsamples_per_type.csv'
-    denoise.FrequencyFiltration(file)
+    denoise.FrequencyFiltration(file, w, f)
 
-    # Visualise the filtrated signals
-    eidsample = '1480985066_196'
+    # Visualise the denoised/filtered signals
+    eidsample = '1248563466_1'
+    visualise = md.VisualiseSignal()
     visualise.TimeDomainGraph(eidsample, 'filtrated')
     visualise.FreqDomainGraph(eidsample, 'filtrated')
 
