@@ -88,19 +88,24 @@ if __name__ == '__main__':
     nPath = Config.ExtEEGs
     spp.Extract10s(zPath, file1, nPath)
 
-    # Denoising EEG subsamples
+    # Algorithm 1 - Denoising EEG subsamples
     denoise = md.Denoising()
     file = Config.augPath + './thousand_subsamples_per_type.csv' # input 1
     denoise.DenoiseProcess(file)
 
     # Visualise the denoising results
+    visualise = md.VisualiseSignal()
     sample = '554968692_24'
-    denoise.VisualiseSignals(sample)
+    visualise.TimeDomainGraph(sample)
 
     # Algorithm 2 - Frequency filtration
     file = Config.augPath + 'thousand_subsamples_per_type.csv'
     denoise.FrequencyFiltration(file)
 
+    # Visualise the filtrated signals
+    eidsample = '1480985066_196'
+    visualise.TimeDomainGraph(eidsample, 'filtrated')
+    visualise.FreqDomainGraph(eidsample, 'filtrated')
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
