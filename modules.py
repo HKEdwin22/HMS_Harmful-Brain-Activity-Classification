@@ -332,15 +332,17 @@ class Denoising():
             plt.title(f'Raw and Denoised Signals for {eidSample}')
             plt.savefig(Config.sampleSignals + f'{eidSample}.jpg')
 
-        def FrequencyFiltration(self, file):
+        def FrequencyFiltration(self, file, w=2000, sf=200):
             '''
             Algorithm 2 - Frequency filtration
             file: input file ('thousand_subsamples_per_type.csv')
+            w: window length (e.g. 200 Hz * 10s)
+            sf: sampling frequency (e.g. 200 Hz)
             '''
 
             df = pd.read_csv(file)
             df = df.iloc[:, :2]
-            Sfreq = fftfreq(2000, d=1/200)
+            Sfreq = fftfreq(w, d=1/sf)
 
             for row in tqdm(df.index):
                 filteredSignal = []
@@ -353,16 +355,17 @@ class Denoising():
                 x = np.load(file)
                 x = x[:,:-1]
                 m, n = x.shape
-                x = np.reshape(x, (n,m))
+                x = np.transpose(x)
                 x = fft(x)
 
                 for i in x:
-                    i[(np.abs(Sfreq) > 30) | (np.abs(Sfreq) < 0.1)] = 0
+                    idx = np.where(np.abs(Sfreq) > 30)[0]
+                    i[idx] = 0
                     powerSpectrum.append(i)
                     filteredSignal.append(ifft(i))
 
-                filteredSignal = np.reshape(filteredSignal, (m,n))
-                powerSpectrum = np.reshape(powerSpectrum, (m,n))
+                filteredSignal = np.transpose(filteredSignal)
+                powerSpectrum = np.transpose(powerSpectrum)
 
                 newFile = Config.FilteredFreq + f'{eid}_{subsample}_filtrated.npy'
                 np.save(newFile, filteredSignal)
