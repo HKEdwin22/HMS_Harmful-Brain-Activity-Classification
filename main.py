@@ -7,6 +7,8 @@ import ForBeginning as fb
 import modules as md
 from modules import Config
 import pandas as pd
+import numpy as np
+import polars as pl
 
 from tqdm import tqdm
 import time
@@ -103,6 +105,20 @@ if __name__ == '__main__':
     visualise = md.VisualiseSignal()
     visualise.TimeDomainGraph(eidsample, 'filtrated')
     visualise.FreqDomainGraph(eidsample, 'filtrated')
+
+    # Generate spectrogram
+    windowLength = 1000
+    freq = 100
+    eidsample = '1248563466_1'
+    file = Config.readyset + f'w130f80/FilteredFreq/{eidsample}_filtrated.npy'
+    signal = np.load(file)
+
+    features = pl.read_parquet(Config.rawPath + '2061593eeg.parquet').columns[:-1]
+
+    for col in range(signal.shape[1]):
+        x = signal[:1000, col]
+        visualise.Spectrogram(x, features[col], sf=freq, n=windowLength)
+        plt.clf()
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
