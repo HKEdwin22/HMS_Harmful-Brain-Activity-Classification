@@ -25,48 +25,9 @@ if __name__ == '__main__':
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
     denoise = md.Denoising()
+    visualise = md.VisualiseSignal()
 
-    # Algorithm 2 - Frequency filtration
-    file = Config.augPath + 'thousand_subsamples_per_type.csv'
-    denoise.FrequencyFiltration(file, 400)
     
-    '''
-    Plot the Power Spectrum
-    '''
-    from scipy.fft import fft, fftfreq, ifft
-
-    eidsample = '1480985066_196'
-
-    denoise.VisualiseSignals(eidsample, 'filtrated')
-    
-    file = Config.ExtEEGs + f'{eidsample}.parquet'
-    signalRaw = pl.read_parquet(file).to_pandas()
-    signalRaw = signalRaw.iloc[:,:-1]
-    
-    fileFiltered = Config.PowerSpectrum + f'{eidsample}_PowerSpectrum.npy'
-    SProcessed = np.load(fileFiltered)
-
-    features = signalRaw.columns
-
-    for f in range(len(features)):
-        rawPower = 10*np.log10(np.abs(signalRaw[features[f]])**2 + 1e-9)
-        proPower = 10*np.log10(np.abs(SProcessed[:, f])**2 + 1e-9)
-
-        Sfreq = fftfreq(2000, d=1/200)
-        idx = np.where((Sfreq<=30) & (Sfreq>=0))[0]
-        
-        plt.clf()
-        plt.plot(Sfreq[idx], rawPower[idx], color='black', label='Raw Signal')
-        plt.plot(Sfreq[idx], proPower[idx], color='red', label='Processed Signal')
-        plt.legend()
-        plt.xlabel("Frequency (Hz)")
-        plt.ylabel("Power (μV²)")
-        plt.title(f"EEG Power Spectrum of brain region {features[f]} for {eidsample}")
-
-        figManager = plt.get_current_fig_manager()
-        figManager.window.state('zoomed')
-        plt.savefig(Config.augPath + f'{eidsample}_{features[f]}.jpg')
-
 
     if Config.usrIn == True:
         '''
