@@ -12,7 +12,7 @@ import pywt
 from tqdm import tqdm
 from math import sqrt, log10
 from scipy.fft import fft, fftfreq, ifft
-from scipy.signal import blackmanharris
+from scipy.signal import blackmanharris, stft
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -28,6 +28,7 @@ class Config():
     DenoisedEEGs = augPath + 'Denoised_EEGs/'
     FilteredFreq = augPath + 'FilteredFreq/'
     PowerSpectrum = augPath + 'PowerSpectrum/'
+    readyset = augPath + 'With Blackman Harris Windowing/'
 
 class EDA():
     '''
@@ -329,7 +330,7 @@ class Denoising():
                 x = fft(x)
 
                 for i in x:
-                    idx = np.where((np.abs(Sfreq) > 30))[0]
+                    idx = np.where(np.abs(Sfreq) > 30)[0]
                     i[idx] = 0
                     powerSpectrum.append(i)
                     filteredSignal.append(ifft(i))
@@ -417,3 +418,20 @@ class VisualiseSignal():
             figManager.window.state('zoomed')
             plt.savefig(Config.augPath + f'{eidSample}_{features[f]}.jpg')
     
+    def Spectrogram(self, x, sf: int, n: int):
+        '''
+        Visualise the spectrogram of the signals
+        x: input signal
+        sf: number of samples in a segment of time (10s in our case)???
+        n: FFT frequency
+        '''
+        # f, t, Zxx = stft(x, sf, nperseg=n, noverlap=0)
+        # amp = Zxx.max()
+        
+        # plt.pcolormesh(t, f, np.abs(Zxx), vmin=0, shading='gouraud')
+
+        plt.specgram(x, NFFT=n, Fs=sf, overlap=256, cmap='viridis')
+        plt.title('Spectrogram for node1')
+        plt.ylabel('Frequency [Hz]')
+        plt.show()
+        plt.clf()
