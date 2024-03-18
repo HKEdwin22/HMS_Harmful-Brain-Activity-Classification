@@ -418,20 +418,28 @@ class VisualiseSignal():
             figManager.window.state('zoomed')
             plt.savefig(Config.augPath + f'{eidSample}_{features[f]}.jpg')
     
-    def Spectrogram(self, x, sf: int, n: int):
+    def Spectrogram(self, x, r: str, sf: int, n: int):
         '''
         Visualise the spectrogram of the signals
         x: input signal
-        sf: number of samples in a segment of time (10s in our case)???
-        n: FFT frequency
+        r: brain region
+        sf: FFT frequency
+        n: number of samples in a segment of time (10s in our case)???
         '''
-        # f, t, Zxx = stft(x, sf, nperseg=n, noverlap=0)
-        # amp = Zxx.max()
-        
-        # plt.pcolormesh(t, f, np.abs(Zxx), vmin=0, shading='gouraud')
+        overlap = int(n*.67)
+        f, t, Zxx = stft(x, fs=sf, nperseg=n, noverlap=overlap, window='blackmanharris', return_onesided=False)
+        graph = plt.pcolormesh(t, np.abs(f), np.abs(Zxx), shading='gouraud', vmin=0, vmax=1)
+        plt.colorbar(graph)
 
-        plt.specgram(x, NFFT=n, Fs=sf, overlap=256, cmap='viridis')
-        plt.title('Spectrogram for node1')
+        plt.title(f'STFT Spectrogram for {r}')
         plt.ylabel('Frequency [Hz]')
-        plt.show()
+        plt.xlabel('Time (s)')
+        plt.savefig(Config.augPath + f'STFT Spectrogram_{r}.jpg')
         plt.clf()
+
+        # plt.specgram(x, NFFT=n, Fs=sf, cmap='viridis', sides='onesided', noverlap=overlap)
+        # plt.title(f'Spectrogram for {r}')
+        # plt.ylabel('Frequency [Hz]')
+        # plt.xlabel('Time (s)')
+        # plt.ylim(0, 30)
+        # plt.savefig(Config.augPath + f'Spectrogram_{r}.jpg')
