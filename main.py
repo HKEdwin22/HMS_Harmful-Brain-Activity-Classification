@@ -107,18 +107,31 @@ if __name__ == '__main__':
     visualise.FreqDomainGraph(eidsample, 'filtrated')
 
     # Generate spectrogram
-    windowLength = 1000
-    freq = 100
+    windowLength = 130
+    freq = 80
     eidsample = '1248563466_1'
     file = Config.readyset + f'w130f80/FilteredFreq/{eidsample}_filtrated.npy'
     signal = np.load(file)
+    rSgn = []
 
     features = pl.read_parquet(Config.rawPath + '2061593eeg.parquet').columns[:-1]
 
     for col in range(signal.shape[1]):
         x = signal[:1000, col]
-        visualise.Spectrogram(x, features[col], sf=freq, n=windowLength)
+        f, t, Z = visualise.Spectrogram(x, features[col], sf=freq, n=windowLength)
+        rSgn.append(Z)
         plt.clf()
+
+    meanSgn = np.mean(np.abs(rSgn), axis=0)
+    graph = plt.pcolormesh(t, np.abs(f), np.abs(meanSgn), shading='gouraud', vmin=0, vmax=1)
+    plt.colorbar(graph)
+
+    plt.title(f'Averaged Spectrogram for {eidsample}')
+    plt.ylabel('Frequency (Hz)')
+    plt.xlabel('Time')
+
+    plt.savefig(Config.augPath + f'Averaged_Spectrogram_{eidsample}.jpg')
+    plt.show()
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
