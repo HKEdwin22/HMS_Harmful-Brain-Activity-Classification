@@ -443,3 +443,5 @@ class VisualiseSignal():
         # plt.xlabel('Time (s)')
         # plt.ylim(0, 30)
         # plt.savefig(Config.augPath + f'Spectrogram_{r}.jpg')
+
+        return f, t, Zxx
