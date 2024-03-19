@@ -417,10 +417,14 @@ class VisualiseSignal():
             figManager = plt.get_current_fig_manager()
             figManager.window.state('zoomed')
             plt.savefig(Config.augPath + f'{eidSample}_{features[f]}.jpg')
-    
-    def Spectrogram(self, x, r: str, sf: int, n: int):
+
+class Spectrogram():
+    def __init__(self) -> None:
+        pass    
+
+    def Generate(self, x, r:str, sf:int, n:int):
         '''
-        Visualise the spectrogram of the signals
+        Generate a spectrogram for a channel of a signal
         x: input signal
         r: brain region
         sf: FFT frequency
@@ -437,11 +441,30 @@ class VisualiseSignal():
         plt.savefig(Config.augPath + f'STFT Spectrogram_{r}.jpg')
         plt.clf()
 
-        # plt.specgram(x, NFFT=n, Fs=sf, cmap='viridis', sides='onesided', noverlap=overlap)
-        # plt.title(f'Spectrogram for {r}')
-        # plt.ylabel('Frequency [Hz]')
-        # plt.xlabel('Time (s)')
-        # plt.ylim(0, 30)
-        # plt.savefig(Config.augPath + f'Spectrogram_{r}.jpg')
+        plt.specgram(x, NFFT=n, Fs=sf, cmap='viridis', sides='onesided', noverlap=overlap)
+        plt.title(f'Spectrogram for {r}')
+        plt.ylabel('Frequency (Hz)')
+        plt.xlabel('Time')
+        plt.ylim(0, 30)
+        plt.savefig(Config.augPath + f'Spectrogram_{r}.jpg')
 
         return f, t, Zxx
+    
+    def MeanSpectrogram(self, x, f:list, fs=80, w=130):
+        '''
+        Execute the Generation of Spectrogram for a signal (2000 x 19) & return an averaged spectrogram
+        x: input filtered signal
+        f: a list of features extracted from the parquet file under rawPath
+        df: the dataset for eeg_id and subsample 'thousands...'
+        eid: the target eid and sample in form of 'eid_subsample'
+        fs: sampling frequency (default 80)
+        w: window length (default 130)
+        '''
+        rSgn = []
+
+        for col in range(x.shape[1]):
+            overlap = int(w*.67)
+            f, t, Z = stft(x[:1000, col], fs=fs, nperseg=w, noverlap=overlap, window='blackmanharris', return_onesided=False)
+            rSgn.append(Z)
+
+        return f, t, np.mean(np.abs(rSgn), axis=0) 
