@@ -12,6 +12,7 @@ import numpy as np
 
 from tqdm import tqdm
 import time
+import pickle
 from datetime import datetime
 
 import seaborn as sns
@@ -25,9 +26,15 @@ if __name__ == '__main__':
     dir_mydoc = fb.ChangeDir()
     spp = md.SignalPreprocessing()
     denoise = md.Denoising()
-    visualise = md.VisualiseSignal()
+    specgram = md.Spectrogram()
 
+    '''Dataset preparation'''
     
+    # Read the training set
+    with open(Config.augPath + "spectrogram_all.pkl", "rb") as f:
+        dfTgt = pickle.load(f)
+
+    dfTgt = pd.DataFrame(dfTgt)
 
     if Config.usrIn == True:
         '''
