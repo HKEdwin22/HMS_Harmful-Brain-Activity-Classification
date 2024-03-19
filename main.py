@@ -106,7 +106,9 @@ if __name__ == '__main__':
     visualise.TimeDomainGraph(eidsample, 'filtrated')
     visualise.FreqDomainGraph(eidsample, 'filtrated')
 
-    # Generate spectrogram
+    # Generate spectrogram (TEST)
+    specgram = md.Spectrogram()
+
     windowLength = 130
     freq = 80
     eidsample = '1248563466_1'
@@ -118,7 +120,7 @@ if __name__ == '__main__':
 
     for col in range(signal.shape[1]):
         x = signal[:1000, col]
-        f, t, Z = visualise.Spectrogram(x, features[col], sf=freq, n=windowLength)
+        f, t, Z = specgram.Generate(x, features[col], sf=freq, n=windowLength)
         rSgn.append(Z)
         plt.clf()
 
@@ -132,6 +134,22 @@ if __name__ == '__main__':
 
     plt.savefig(Config.augPath + f'Averaged_Spectrogram_{eidsample}.jpg')
     plt.show()
+
+    # Generate an averaged spectrogram for all signals
+    file = Config.augPath + 'thousand_subsamples_per_type.csv'
+    df = pd.read_csv(file).iloc[:, 0:2]
+    features = pl.read_parquet(Config.rawPath + '2061593eeg.parquet').columns[:-1]
+    resdf = pd.DataFrame(columns=['fileID', 'Spec_x', 'Spec_y', 'meanSpec'])
+
+    for i in tqdm(df.index):
+        eid = str(df.iloc[i,0]) + '_' + str(df.iloc[i,1])
+        file = Config.readyset + f'w130f80/FilteredFreq/{eid}_filtrated.npy'
+        signal = np.load(file)
+        
+        f, t, Z = specgram.MeanSpectrogram(signal, features)
+        resdf.loc[i] = [eid, f, t, Z]
+
+    resdf.to_csv(Config.augPath + 'Spectrogram/spectrogram_all.csv', index=False)
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
