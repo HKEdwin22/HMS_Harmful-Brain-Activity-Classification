@@ -12,6 +12,7 @@ import polars as pl
 
 from tqdm import tqdm
 import time
+import pickle
 from datetime import datetime
 
 import seaborn as sns
@@ -139,7 +140,7 @@ if __name__ == '__main__':
     file = Config.augPath + 'thousand_subsamples_per_type.csv'
     df = pd.read_csv(file).iloc[:, 0:2]
     features = pl.read_parquet(Config.rawPath + '2061593eeg.parquet').columns[:-1]
-    resdf = pd.DataFrame(columns=['fileID', 'Spec_x', 'Spec_y', 'meanSpec'])
+    data = {'fileID': [], 'Spec_x': [], 'Spec_y': [], 'meanSpec': [], 'Class': []}
 
     for i in tqdm(df.index):
         eid = str(df.iloc[i,0]) + '_' + str(df.iloc[i,1])
@@ -147,23 +148,19 @@ if __name__ == '__main__':
         signal = np.load(file)
         
         f, t, Z = specgram.MeanSpectrogram(signal, features)
-        resdf.loc[i] = [eid, f, t, Z]
-
-    resdf.to_csv(Config.augPath + 'spectrogram_all.csv', index=False)
+        data['fileID'].append(eid)
+        data['Spec_x'].append(t)
+        data['Spec_y'].append(f)
+        data['meanSpec'].append(Z)
+        data['Class'].append(df.iloc[i,2])
+        
+    with open(Config.augPath + 'spectrogram_all.pkl', "wb") as f:
+        pickle.dump(data, f)
 
     '''
     PART 4 - TRAINING SET PREPARATION
     '''
-    # Add ground truth to the target dataset
-    dfTgt = pd.read_csv(Config.augPath + 'spectrogram_all.csv')
-    dfRaw = pd.read_csv(Config.augPath + 'thousand_subsamples_per_type.csv')
-    label = []
-
-    for idx in tqdm(dfTgt.index):
-        label.append(dfRaw.iloc[idx, 8])
-
-    dfTgt['Class'] = label
-    dfTgt.to_csv(Config.augPath + 'spectrogram_all.csv')
+    
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
