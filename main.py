@@ -78,7 +78,7 @@ if __name__ == '__main__':
     plt.show()
 
     '''
-    PART 3 - CREATE DATASET FOR DENOISING
+    PART 3 - DENOISING, FILTERING & SPECTROGRAM
     '''
     # Randomly draw 1000 signals for each class
     file = Config.augPath + 'rawData (ideal & proto)_without_DiscontinuedEEG.csv'
@@ -149,7 +149,21 @@ if __name__ == '__main__':
         f, t, Z = specgram.MeanSpectrogram(signal, features)
         resdf.loc[i] = [eid, f, t, Z]
 
-    resdf.to_csv(Config.augPath + 'Spectrogram/spectrogram_all.csv', index=False)
+    resdf.to_csv(Config.augPath + 'spectrogram_all.csv', index=False)
+
+    '''
+    PART 4 - TRAINING SET PREPARATION
+    '''
+    # Add ground truth to the target dataset
+    dfTgt = pd.read_csv(Config.augPath + 'spectrogram_all.csv')
+    dfRaw = pd.read_csv(Config.augPath + 'thousand_subsamples_per_type.csv')
+    label = []
+
+    for idx in tqdm(dfTgt.index):
+        label.append(dfRaw.iloc[idx, 8])
+
+    dfTgt['Class'] = label
+    dfTgt.to_csv(Config.augPath + 'spectrogram_all.csv')
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
