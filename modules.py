@@ -21,6 +21,12 @@ import seaborn as sns
 class Config():
     seed = 73
     usrIn = False
+
+    # parameters for model training
+    batchSize = 60
+    nEpoch = 100
+
+    # path variables
     sampleSignals = './SampleSignals/'
     rawPath = './rawData/'
     augPath = './augData/'
