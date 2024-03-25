@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import polars as pl
 
+from sklearn.model_selection import train_test_split
+
 from tqdm import tqdm
 import time
 import pickle
@@ -160,7 +162,23 @@ if __name__ == '__main__':
     '''
     PART 4 - TRAINING SET PREPARATION
     '''
-    
+    # Read the training set
+    with open(Config.augPath + "spectrogram_all.pkl", "rb") as f:
+        dfTgt = pickle.load(f)
+
+    # Split the data into training and test set
+    dfTgt = pd.DataFrame(dfTgt)
+    X = dfTgt.iloc[:, 3]
+    y = dfTgt.iloc[:, 4]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=47)
+
+    # Visualise the distribution of classes in the test set
+    df = y_test.to_frame()
+    sns.countplot(data=df, x='Class', color='darkslategray')
+    plt.title('Distribution of Prediction Class in the Test Set')
+    plt.show()
+    del df, dfTgt
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
