@@ -27,15 +27,7 @@ if __name__ == '__main__':
     spp = md.SignalPreprocessing()
     denoise = md.Denoising()
     specgram = md.Spectrogram()
-
-    '''Dataset preparation'''
     
-    # Read the training set
-    with open(Config.augPath + "spectrogram_all.pkl", "rb") as f:
-        dfTgt = pickle.load(f)
-
-    dfTgt = pd.DataFrame(dfTgt)
-
     if Config.usrIn == True:
         '''
         PART 3 - CREATE DATASET FOR DENOISING (ABANDONED)
