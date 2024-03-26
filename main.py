@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import polars as pl
 
-from sklearn.model_selection import train_test_split
+from scipy.stats import boxcox
 
 from tqdm import tqdm
 import time
@@ -99,23 +99,21 @@ if __name__ == '__main__':
     denoise.DenoiseProcess(file)
 
     # Algorithm 2 - Frequency filtration
-    w, f = 130, 80
+    w, freq = 600, 60 # f must be 60*n. f/w=0.1 appears the best.
     file = Config.augPath + 'thousand_subsamples_per_type.csv'
-    denoise.FrequencyFiltration(file, w, f)
+    denoise.FrequencyFiltration(file, w, freq)
 
     # Visualise the denoised/filtered signals
     eidsample = '1248563466_1'
     visualise = md.VisualiseSignal()
     visualise.TimeDomainGraph(eidsample, 'filtrated')
-    visualise.FreqDomainGraph(eidsample, mode='filtrated')
+    visualise.FreqDomainGraph(eidsample, w=w, fs=freq, mode='filtrated')
     
     # Generate spectrogram (TEST)
     specgram = md.Spectrogram()
 
-    windowLength = 130
-    freq = 80
     eidsample = '1248563466_1'
-    file = Config.readyset + f'w130f80/FilteredFreq/{eidsample}_filtrated.npy'
+    file = Config.augPath + f'w600f60/FilteredFreq/{eidsample}_filtrated.npy'
     signal = np.load(file)
     rSgn = []
 
@@ -123,12 +121,16 @@ if __name__ == '__main__':
 
     for col in range(signal.shape[1]):
         x = signal[:1000, col]
-        f, t, Z = specgram.Generate(x, features[col], sf=freq, n=windowLength)
-        rSgn.append(Z)
+        f, t, Z = specgram.Generate(x, features[col], sf=freq, n=w)
+
+        # Normalise the spectrogram for each node
+        fitZ, fitLambda = boxcox(np.abs(Z.ravel()))
+        fitZ = fitZ.reshape(Z.shape)
+        rSgn.append(fitZ)
         plt.clf()
 
     meanSgn = np.mean(np.abs(rSgn), axis=0)
-    graph = plt.pcolormesh(t, np.abs(f), np.abs(meanSgn), shading='gouraud', vmin=0, vmax=1)
+    graph = plt.pcolormesh(t, np.abs(f), np.abs(meanSgn), shading='gouraud')
     plt.colorbar(graph)
 
     plt.title(f'Averaged Spectrogram for {eidsample}')
@@ -146,7 +148,7 @@ if __name__ == '__main__':
 
     for i in tqdm(df.index):
         eid = str(df.iloc[i,0]) + '_' + str(df.iloc[i,1])
-        file = Config.readyset + f'w130f80/FilteredFreq/{eid}_filtrated.npy'
+        file = Config.augPath + f'w600f60/FilteredFreq/{eid}_filtrated.npy'
         signal = np.load(file)
         
         f, t, Z = specgram.MeanSpectrogram(signal, features)
