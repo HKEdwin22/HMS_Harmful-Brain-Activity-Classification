@@ -270,7 +270,7 @@ class Denoising():
             mode: hard or soft (for thresholding)
             '''
 
-            sigma = fb.MAD(wave)/.6745
+            sigma = fb.MAD(np.abs(wave))/.6745
             threshold = sigma * sqrt(2*log10(len(oriSignal)))
             fCoeff = pywt.threshold(wave, threshold, mode=mode)
 
@@ -295,12 +295,17 @@ class Denoising():
                     
                     # Step 1 - estimate the approximated and multilelvel detailed coefficients
                     db4 = pywt.Wavelet('db4')
-                    L = pywt.wavedec(xSeries, db4, mode='periodic', level=5)
+                    L = pywt.wavedec(xSeries, db4, level=5, mode='periodic')
 
+                    # Check for null value and substitute them with mean values
+                    for i in range(len(L)):
+                        if True in np.isnan(L[i]):
+                            L[i][np.isnan(L[i])] = np.nanmean(L[i])
+                            
                     # Step 2, 3 & 4 - compute sigma value, estimate the threshold & restore the signal
-                    F = [L[0]]
-                    for i in range(1,len(L)):
-                        F.append(self.Thresholding(L[i], xSeries))
+                    F = []
+                    for i in range(len(L)):
+                        F.append(self.Thresholding(L[i], xSeries, 'soft'))
 
                     Rsignal.append(pywt.waverec(F, db4, mode='periodic'))
                     
