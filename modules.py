@@ -13,6 +13,7 @@ from tqdm import tqdm
 from math import sqrt, log10
 from scipy.fft import fft, fftfreq, ifft
 from scipy.signal import blackmanharris, stft
+from scipy.stats import boxcox
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -476,6 +477,10 @@ class Spectrogram():
         for col in range(x.shape[1]):
             overlap = int(w*.67)
             f, t, Z = stft(x[:1000, col], fs=fs, nperseg=w, noverlap=overlap, window='blackmanharris', return_onesided=False)
-            rSgn.append(Z)
+            
+            # Normalise the spectrogram for each node
+            fitZ, fitLambda = boxcox(np.abs(Z.ravel()))
+            fitZ = fitZ.reshape(Z.shape)
+            rSgn.append(fitZ)
 
         return f, t, np.mean(np.abs(rSgn), axis=0) 
