@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -33,9 +33,16 @@ def DatasetPreparation():
     coding = dict(enumerate(code.cat.categories))
     dfTgt['Class'] = code.cat.codes
 
-    # Transform the data to tensors
+    # Normalise the input spectrograms
     X = dfTgt.iloc[:, 3]
-    X = torch.tensor(X).type(torch.float32)
+    scaler = MinMaxScaler()
+    result = []
+    for i in X:
+       i = scaler.fit_transform(i)
+       result.append(i)
+    
+    # Convert the data to tensors
+    X = torch.tensor(result).type(torch.float32)
     y = torch.tensor(dfTgt.iloc[:, 4].values).type(torch.long)
 
     X = X.unsqueeze(1)
@@ -47,10 +54,10 @@ def DatasetPreparation():
 
     return trainLoader, testLoader, coding
 
-'''
-Model Implementation
-'''
 class HMSConvNN(nn.Module):
+    '''
+    Model Implementation
+    '''
     def __init__(self, *args, **kwargs) -> None:
         super(HMSConvNN, self).__init__(*args, **kwargs)
         self.Conv11 = nn.Conv2d(1, 128, kernel_size=(5,3), stride=(1,1), padding=0)
@@ -60,33 +67,35 @@ class HMSConvNN(nn.Module):
         self.Conv31 = nn.Conv2d(256, 512, kernel_size=(3,3), stride=(2,1), padding=0)
         self.Conv3 = nn.Conv2d(512, 512, kernel_size=(3,3), stride=(1,1), padding=0)
         self.maxPool = nn.MaxPool2d(kernel_size=(2,2), stride=1)
-        self.relu = nn.ReLU(inplace=True)
+        self.activation = nn.LeakyReLU(inplace=True)
 
         self.fc = nn.Linear(in_features=4*21*512, out_features=6)
+        self.softmax = nn.Softmax(dim=0)
 
     def forward(self, x):
         
         # Hidden layer 1
-        x = self.relu(self.Conv11(x))
-        x = self.relu(self.Conv1(x))
-        x = self.relu(self.Conv1(x))
+        x = self.activation(self.Conv11(x))
+        x = self.activation(self.Conv1(x))
+        x = self.activation(self.Conv1(x))
         x = self.maxPool(x)
 
         # Hidden layer 2
-        x = self.relu(self.Conv21(x))
-        x = self.relu(self.Conv2(x))
-        x = self.relu(self.Conv2(x))
+        x = self.activation(self.Conv21(x))
+        x = self.activation(self.Conv2(x))
+        x = self.activation(self.Conv2(x))
         x = self.maxPool(x)
 
         # Hidden layer 3
-        x = self.relu(self.Conv31(x))
-        x = self.relu(self.Conv3(x))
-        x = self.relu(self.Conv3(x))
+        x = self.activation(self.Conv31(x))
+        x = self.activation(self.Conv3(x))
+        x = self.activation(self.Conv3(x))
         x = self.maxPool(x)
 
         # Fully connected layer
         x = torch.flatten(x, 1)
         x = self.fc(x)
+        # x = self.softmax(x)
 
         return x
     
@@ -120,17 +129,18 @@ device = torch.device(dev)
 
 cnn = HMSConvNN().to(device)
 lossFn = nn.CrossEntropyLoss()
-optimiser = optim.SGD(cnn.parameters(), lr=0.001, momentum=0.9)
+optimiser = optim.SGD(cnn.parameters(), lr=1e-6, momentum=0.0)
 
-for e in range(Config.nEpoch):
+for e in tqdm(range(Config.nEpoch)):
 
     for inputs, labels in trainLoader:
         inputs = inputs.type(torch.float32).to(device)
         labels = labels.to(device)
-        predictions = cnn(inputs)
-        loss = lossFn(predictions, labels)
 
         optimiser.zero_grad()
+        predictions = cnn(inputs)
+        
+        loss = lossFn(predictions, labels)
         loss.backward()
         optimiser.step()
 
