@@ -72,6 +72,19 @@ class HMSConvNN(nn.Module):
         self.fc = nn.Linear(in_features=4*21*512, out_features=6)
         self.softmax = nn.Softmax(dim=0)
 
+        self.weightInit()
+
+    def weightInit(self):
+
+        for _, seq in self._modules.items():
+            for _, layer in seq._modules.items():
+                if isinstance(layer, nn.Linear):
+                    nn.init.kaiming_normal_(layer.weight)
+                    if layer.bias is not None:
+                        nn.init.constant_(layer.bias,0.0)
+        
+        print('Weights initialised!')
+
     def forward(self, x):
         
         # Hidden layer 1
@@ -107,15 +120,15 @@ dir_mydoc = fb.ChangeDir()
 trainLoader, testLoader, coding = DatasetPreparation()
 
 # Illustrate the input spectrograms
-# import matplotlib.pyplot as plt
-# train_features, train_labels = next(iter(trainLoader))
-# print(f"Feature batch shape: {train_features.size()}")
-# print(f"Labels batch shape: {train_labels.size()}")
-# img = train_features[0].squeeze()
-# label = train_labels[0]
-# plt.imshow(img, cmap="gray")
-# plt.show()
-# print(f"Label: {label}")
+import matplotlib.pyplot as plt
+train_features, train_labels = next(iter(trainLoader))
+print(f"Feature batch shape: {train_features.size()}")
+print(f"Labels batch shape: {train_labels.size()}")
+img = train_features[0].squeeze()
+label = train_labels[0]
+plt.imshow(img, cmap="gray")
+plt.show()
+print(f"Label: {label}")
 
 
 '''
