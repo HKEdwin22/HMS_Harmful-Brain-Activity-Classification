@@ -27,7 +27,11 @@ if __name__ == '__main__':
     spp = md.SignalPreprocessing()
     denoise = md.Denoising()
     specgram = md.Spectrogram()
-    
+
+    # Visualise the denoised signals
+    eid = '747196464_3'
+    signal = np.load(Config.DenoisedEEGs + f'{eid}_denoised.npy')
+        
     if Config.usrIn == True:
         '''
         PART 3 - CREATE DATASET FOR DENOISING (ABANDONED)
