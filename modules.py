@@ -479,11 +479,6 @@ class Spectrogram():
 
             # Normalise the input signal for STFT
             X = x[:1000, col]
-            # fitX = X[X != 0]
-            # _, lamb = boxcox(np.abs(fitX))
-            # X[X == 0] = -1/lamb
-
-            # fitX, _ = boxcox(np.abs(X))
 
             mu, std = np.mean(X), np.std(X)
             fitX = (X - mu) / std
