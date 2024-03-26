@@ -462,7 +462,7 @@ class Spectrogram():
 
         return f, t, Zxx
     
-    def MeanSpectrogram(self, x, f:list, fs=80, w=130):
+    def MeanSpectrogram(self, x, f:list, fs=60, w=600):
         '''
         Execute the Generation of Spectrogram for a signal (2000 x 19) & return an averaged spectrogram
         x: input filtered signal
@@ -476,10 +476,22 @@ class Spectrogram():
 
         for col in range(x.shape[1]):
             overlap = int(w*.67)
-            f, t, Z = stft(x[:1000, col], fs=fs, nperseg=w, noverlap=overlap, window='blackmanharris', return_onesided=False)
+
+            # Normalise the input signal for STFT
+            X = x[:1000, col]
+            # fitX = X[X != 0]
+            # _, lamb = boxcox(np.abs(fitX))
+            # X[X == 0] = -1/lamb
+
+            # fitX, _ = boxcox(np.abs(X))
+
+            mu, std = np.mean(X), np.std(X)
+            fitX = (X - mu) / std
+
+            f, t, Z = stft(fitX, fs=fs, nperseg=w, noverlap=overlap, window='blackmanharris', return_onesided=False)
             
             # Normalise the spectrogram for each node
-            fitZ, fitLambda = boxcox(np.abs(Z.ravel()))
+            fitZ, _ = boxcox(np.abs(Z.ravel()))
             fitZ = fitZ.reshape(Z.shape)
             rSgn.append(fitZ)
 
