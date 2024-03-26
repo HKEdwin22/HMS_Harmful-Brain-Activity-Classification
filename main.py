@@ -107,8 +107,8 @@ if __name__ == '__main__':
     eidsample = '1248563466_1'
     visualise = md.VisualiseSignal()
     visualise.TimeDomainGraph(eidsample, 'filtrated')
-    visualise.FreqDomainGraph(eidsample, 'filtrated')
-
+    visualise.FreqDomainGraph(eidsample, mode='filtrated')
+    
     # Generate spectrogram (TEST)
     specgram = md.Spectrogram()
 
@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
     # Generate an averaged spectrogram for all signals
     file = Config.augPath + 'thousand_subsamples_per_type.csv'
-    df = pd.read_csv(file).iloc[:, 0:2]
+    df = pd.read_csv(file).iloc[:, [0,1,8]]
     features = pl.read_parquet(Config.rawPath + '2061593eeg.parquet').columns[:-1]
     data = {'fileID': [], 'Spec_x': [], 'Spec_y': [], 'meanSpec': [], 'Class': []}
 
@@ -158,27 +158,6 @@ if __name__ == '__main__':
         
     with open(Config.augPath + 'spectrogram_all.pkl', "wb") as f:
         pickle.dump(data, f)
-
-    '''
-    PART 4 - TRAINING SET PREPARATION
-    '''
-    # Read the training set
-    with open(Config.augPath + "spectrogram_all.pkl", "rb") as f:
-        dfTgt = pickle.load(f)
-
-    # Split the data into training and test set
-    dfTgt = pd.DataFrame(dfTgt)
-    X = dfTgt.iloc[:, 3]
-    y = dfTgt.iloc[:, 4]
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=47)
-
-    # Visualise the distribution of classes in the test set
-    df = y_test.to_frame()
-    sns.countplot(data=df, x='Class', color='darkslategray')
-    plt.title('Distribution of Prediction Class in the Test Set')
-    plt.show()
-    del df, dfTgt
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)}' + '='*20)
