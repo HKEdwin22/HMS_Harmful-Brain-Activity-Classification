@@ -29,9 +29,11 @@ if __name__ == '__main__':
     specgram = md.Spectrogram()
 
     # Visualise the denoised signals
-    eid = '747196464_3'
-    signal = np.load(Config.DenoisedEEGs + f'{eid}_denoised.npy')
-        
+    eidsample = '747196464_3'
+    signal = np.load(Config.DenoisedEEGs + f'{eidsample}_denoised.npy')
+
+    w, freq = 600, 60 # f must be 60*n. f/w=0.1 appears the best.
+    
     if Config.usrIn == True:
         '''
         PART 3 - CREATE DATASET FOR DENOISING (ABANDONED)
