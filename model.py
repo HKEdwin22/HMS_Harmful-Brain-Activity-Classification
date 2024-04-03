@@ -12,12 +12,16 @@ import pickle
 from sklearn.preprocessing import MinMaxScaler
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data_utils
 
 from tqdm import tqdm
 import time
 from datetime import datetime
+
+nEpoch = 50
+batchSize = 100 #600 is too large.
 
 def DatasetPreparation():
     '''
@@ -49,10 +53,27 @@ def DatasetPreparation():
     tensorDataset = data_utils.TensorDataset(X, y)
 
     trainSet, testSet = data_utils.random_split(tensorDataset, [int(len(X)*.8), int(len(X)*.2)])
-    trainLoader = data_utils.DataLoader(trainSet, batch_size=Config.batchSize, shuffle=True)
-    testLoader = data_utils.DataLoader(testSet, batch_size=Config.batchSize, shuffle=False)
+    trainLoader = data_utils.DataLoader(trainSet, batch_size=batchSize, shuffle=True)
+    testLoader = data_utils.DataLoader(testSet, batch_size=batchSize, shuffle=False)
 
     return trainLoader, testLoader, coding
+
+def VisualiseInputSpectrogram(x):
+    '''
+    Illustrate the input spectrograms
+    x : train loader
+    '''
+    import matplotlib.pyplot as plt
+
+    train_features, train_labels = next(iter(trainLoader))
+    print(f"Feature batch shape: {train_features.size()}")
+    print(f"Labels batch shape: {train_labels.size()}")
+    img = train_features[0].squeeze()
+    label = train_labels[0]
+    plt.imshow(img, cmap="gray")
+    plt.show()
+    print(f"Label: {label}")
+
 
 class HMSConvNN(nn.Module):
     '''
@@ -60,16 +81,41 @@ class HMSConvNN(nn.Module):
     '''
     def __init__(self, *args, **kwargs) -> None:
         super(HMSConvNN, self).__init__(*args, **kwargs)
-        self.Conv11 = nn.Conv2d(1, 128, kernel_size=(5,3), stride=(1,1), padding=0)
-        self.Conv1 = nn.Conv2d(128, 128, kernel_size=(5,3), stride=(1,1), padding=0)
-        self.Conv21 = nn.Conv2d(128, 256, kernel_size=(3,3), stride=(2,1), padding=0)
-        self.Conv2 = nn.Conv2d(256, 256, kernel_size=(3,3), stride=(1,1), padding=0)
-        self.Conv31 = nn.Conv2d(256, 512, kernel_size=(3,3), stride=(2,1), padding=0)
-        self.Conv3 = nn.Conv2d(512, 512, kernel_size=(3,3), stride=(1,1), padding=0)
-        self.maxPool = nn.MaxPool2d(kernel_size=(2,2), stride=1)
-        self.activation = nn.LeakyReLU(inplace=True)
 
-        self.fc = nn.Linear(in_features=4*21*512, out_features=6)
+        self.hiddenLayer1 = nn.Sequential(
+            nn.Conv2d(1, 128, kernel_size=(5,3), stride=(1,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=(5,3), stride=(1,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=(5,3), stride=(2,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=(2,2), stride=1)
+        )
+        
+        self.hiddenLayer2 = nn.Sequential(
+            nn.Conv2d(128, 256, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=(3,3), stride=(2,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=(2,2), stride=1)
+        )
+        
+        self.hiddenLayer3 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=(3,3), stride=(2,1), padding=(0,1)),
+            nn.LeakyReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=(2,2), stride=1)
+        )
+        
+        self.fc1 = nn.Linear(in_features=512*68*4, out_features=2048)
+        self.fc2 = nn.Linear(in_features=2048, out_features=256)
+        self.fc3 = nn.Linear(in_features=256, out_features=16)
+        self.fc4 = nn.Linear(in_features=16, out_features=6)
         self.softmax = nn.Softmax(dim=0)
 
         self.weightInit()
@@ -82,32 +128,26 @@ class HMSConvNN(nn.Module):
                     nn.init.kaiming_normal_(layer.weight)
                     if layer.bias is not None:
                         nn.init.constant_(layer.bias,0.0)
+                elif isinstance(layer, nn.Conv2d):
+                    nn.init.xavier_normal_(layer.weight)
+                    if layer.bias is not None:
+                        nn.init.constant_(layer.bias,0.0)
+                    
         
         print('Weights initialised!')
 
     def forward(self, x):
         
-        # Hidden layer 1
-        x = self.activation(self.Conv11(x))
-        x = self.activation(self.Conv1(x))
-        x = self.activation(self.Conv1(x))
-        x = self.maxPool(x)
+        x = self.hiddenLayer1(x)
+        x = self.hiddenLayer2(x)
+        x = self.hiddenLayer3(x)
 
-        # Hidden layer 2
-        x = self.activation(self.Conv21(x))
-        x = self.activation(self.Conv2(x))
-        x = self.activation(self.Conv2(x))
-        x = self.maxPool(x)
-
-        # Hidden layer 3
-        x = self.activation(self.Conv31(x))
-        x = self.activation(self.Conv3(x))
-        x = self.activation(self.Conv3(x))
-        x = self.maxPool(x)
-
-        # Fully connected layer
+        # Fully connected layers
         x = torch.flatten(x, 1)
-        x = self.fc(x)
+        x = F.leaky_relu(self.fc1(x))
+        x = F.leaky_relu(self.fc2(x))
+        x = F.leaky_relu(self.fc3(x))
+        x = F.leaky_relu(self.fc4(x))
         # x = self.softmax(x)
 
         return x
@@ -118,18 +158,6 @@ start = time.time()
 dir_mydoc = fb.ChangeDir()
 
 trainLoader, testLoader, coding = DatasetPreparation()
-
-# Illustrate the input spectrograms
-import matplotlib.pyplot as plt
-train_features, train_labels = next(iter(trainLoader))
-print(f"Feature batch shape: {train_features.size()}")
-print(f"Labels batch shape: {train_labels.size()}")
-img = train_features[0].squeeze()
-label = train_labels[0]
-plt.imshow(img, cmap="gray")
-plt.show()
-print(f"Label: {label}")
-
 
 '''
 Model Training
@@ -142,16 +170,22 @@ device = torch.device(dev)
 
 cnn = HMSConvNN().to(device)
 lossFn = nn.CrossEntropyLoss()
-optimiser = optim.SGD(cnn.parameters(), lr=1e-6, momentum=0.0)
+optimiser = optim.AdamW(cnn.parameters(), lr=1e-3, weight_decay=0)
 
-for e in tqdm(range(Config.nEpoch)):
+cnn.train()
+for e in range(0, nEpoch, 1):
 
-    for inputs, labels in trainLoader:
+    pbar = tqdm(trainLoader)
+    for i, data in enumerate(pbar):
+
+        pbar.set_description(f'Epoch {e}/{nEpoch} Batch {i}')
+        
+        inputs, labels = data
         inputs = inputs.type(torch.float32).to(device)
         labels = labels.to(device)
 
-        optimiser.zero_grad()
         predictions = cnn(inputs)
+        optimiser.zero_grad()
         
         loss = lossFn(predictions, labels)
         loss.backward()
@@ -167,7 +201,7 @@ for e in tqdm(range(Config.nEpoch)):
         count += len(labels)
 
     acc /= count    
-    print(f'Epoch {e/Config.nEpoch}:\taccuracy: {acc:.4f}')
+    print(f'Epoch {e}/{nEpoch}:\taccuracy: {acc:.4f}')
 
 torch.save(cnn.state_dict(), 'model1.pth')
 
