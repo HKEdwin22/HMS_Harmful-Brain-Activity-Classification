@@ -15,6 +15,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data_utils
+from torchvision import models
+from torchsummary import summary
 
 from tqdm import tqdm
 import time
@@ -22,6 +24,7 @@ from datetime import datetime
 
 nEpoch = 50
 batchSize = 100 #600 is too large.
+learningRate = 1e-4
 
 def DatasetPreparation():
     '''
@@ -116,7 +119,7 @@ class HMSConvNN(nn.Module):
         self.fc2 = nn.Linear(in_features=2048, out_features=256)
         self.fc3 = nn.Linear(in_features=256, out_features=16)
         self.fc4 = nn.Linear(in_features=16, out_features=6)
-        self.softmax = nn.Softmax(dim=0)
+        self.softmax = nn.Softmax(dim=1)
 
         self.weightInit()
 
@@ -124,12 +127,8 @@ class HMSConvNN(nn.Module):
 
         for _, seq in self._modules.items():
             for _, layer in seq._modules.items():
-                if isinstance(layer, nn.Linear):
-                    nn.init.kaiming_normal_(layer.weight)
-                    if layer.bias is not None:
-                        nn.init.constant_(layer.bias,0.0)
-                elif isinstance(layer, nn.Conv2d):
-                    nn.init.xavier_normal_(layer.weight)
+                if isinstance(layer, nn.Linear) or isinstance(layer, nn.Conv2d):
+                    nn.init.kaiming_uniform_(layer.weight)
                     if layer.bias is not None:
                         nn.init.constant_(layer.bias,0.0)
                     
@@ -148,65 +147,86 @@ class HMSConvNN(nn.Module):
         x = F.leaky_relu(self.fc2(x))
         x = F.leaky_relu(self.fc3(x))
         x = F.leaky_relu(self.fc4(x))
-        # x = self.softmax(x)
 
         return x
     
 
-print('='*20 + f' {datetime.now().replace(microsecond=0)} Program Start ' + '='*20 +'\n')
-start = time.time()
-dir_mydoc = fb.ChangeDir()
-
-trainLoader, testLoader, coding = DatasetPreparation()
-
-'''
-Model Training
-'''
-if torch.cuda.is_available(): 
- dev = "cuda:0" 
-else: 
- dev = "cpu" 
-device = torch.device(dev) 
-
-cnn = HMSConvNN().to(device)
-lossFn = nn.CrossEntropyLoss()
-optimiser = optim.AdamW(cnn.parameters(), lr=1e-3, weight_decay=0)
-
-cnn.train()
-for e in range(0, nEpoch, 1):
-
-    pbar = tqdm(trainLoader)
-    for i, data in enumerate(pbar):
-
-        pbar.set_description(f'Epoch {e}/{nEpoch} Batch {i}')
-        
-        inputs, labels = data
-        inputs = inputs.type(torch.float32).to(device)
-        labels = labels.to(device)
-
-        predictions = cnn(inputs)
-        optimiser.zero_grad()
-        
-        loss = lossFn(predictions, labels)
-        loss.backward()
-        optimiser.step()
-
-    acc = 0
-    count = 0
+if __name__ == '__main__':
     
-    for inputs, labels in testLoader:
-        inputs = inputs.type(torch.float32).to(device)
-        labels = labels.to(device)
-        acc += (torch.argmax(predictions, 1) == labels).float().sum()
-        count += len(labels)
+    print('='*20 + f' {datetime.now().replace(microsecond=0)} Program Start ' + '='*20 +'\n')
+    start = time.time()
+    dir_mydoc = fb.ChangeDir()
 
-    acc /= count    
-    print(f'Epoch {e}/{nEpoch}:\taccuracy: {acc:.4f}')
+    trainLoader, testLoader, coding = DatasetPreparation()
 
-torch.save(cnn.state_dict(), 'model1.pth')
+    '''
+    Model Training
+    '''
+    dev = "cuda:0" if torch.cuda.is_available() else "cpu"
+    device = torch.device(dev) 
 
-end = time.time()
-print('='*20 + f' Program End {datetime.now().replace(microsecond=0)} ' + '='*20)
-print(f'Execution time: {(end - start):.2f}s')
+    cnn = HMSConvNN().to(device)
+    lossFn = nn.CrossEntropyLoss()
+    optimiser = optim.AdamW(cnn.parameters(), lr=learningRate, weight_decay=0)
 
-pass
+    lossTable = pd.DataFrame(columns=['Training Loss', 'Training Accuracy', 'Validation Loss', 'Validation Accuracy'])
+    for e in range(0, nEpoch, 1):
+
+        trainingLoss = 0.0
+        trainingAcc = 0.0
+        validationAcc = 0.0
+        validationLoss = 0.0
+        total = 0
+
+        cnn.train()
+        pbar = tqdm(trainLoader)
+        for nBatch, data in enumerate(pbar):
+
+            pbar.set_description(f'Epoch {e}/{nEpoch}')
+            
+            inputs, labels = data
+            inputs = inputs.type(torch.float32).to(device)
+            labels = labels.to(device)
+
+            predictions = cnn(inputs)
+            optimiser.zero_grad()
+            
+            loss = lossFn(predictions, labels)
+            loss.backward()
+            optimiser.step()
+
+            trainingLoss += loss.item()
+            total += labels.size(0)
+            trainingAcc += (torch.argmax(cnn.softmax(predictions), 1) == labels).sum().item()
+
+        trainingLoss /= len(trainLoader)
+        trainingAcc /= total
+        total = 0
+        
+        cnn.eval()
+        with torch.no_grad():
+            for inputs, labels in testLoader:
+
+                inputs = inputs.type(torch.float32).to(device)
+                labels = labels.to(device)
+                
+                predictions = cnn(inputs)
+                validationLoss += lossFn(predictions, labels).item()
+                validationAcc += (torch.argmax(cnn.softmax(predictions), 1) == labels).sum().item()
+                total += len(labels)
+
+        validationLoss /= len(testLoader)
+        validationAcc /= total
+        print(f'Training loss / accuracy: {trainingLoss:.4f} / {trainingAcc:.4f}' + ' '*10 + f'Validation loss / accuracy: {validationLoss:.4f} / {validationAcc:.4f}')    
+
+        lossTable.loc[len(lossTable)] = [round(trainingLoss, 4), round(trainingAcc, 4), round(validationLoss, 4), round(validationAcc, 4)]
+        
+        
+    torch.save(cnn.state_dict(), 'model1.pth')
+    lossTable.to_csv('./loss table.csv', index=False)
+
+    end = time.time()
+    print('='*20 + f' Program End {datetime.now().replace(microsecond=0)} ' + '='*20)
+    print(f'Execution time: {(end - start) // 60} min {(end - start) % 60} s')
+
+    pass
