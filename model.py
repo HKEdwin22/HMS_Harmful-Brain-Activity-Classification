@@ -15,16 +15,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data_utils
-from torchvision import models
 from torchsummary import summary
 
 from tqdm import tqdm
 import time
 from datetime import datetime
 
-nEpoch = 50
+nEpoch = 150
 batchSize = 100 #600 is too large.
 learningRate = 1e-4
+L2Lambda = 1e-10
 
 def DatasetPreparation():
     '''
@@ -86,36 +86,18 @@ class HMSConvNN(nn.Module):
         super(HMSConvNN, self).__init__(*args, **kwargs)
 
         self.hiddenLayer1 = nn.Sequential(
-            nn.Conv2d(1, 128, kernel_size=(5,3), stride=(1,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=(5,3), stride=(1,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=(5,3), stride=(2,1), padding=(0,1)),
+            nn.Conv2d(1, 4, kernel_size=(5,3), stride=(1,1), padding=(0,1)),
             nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(2,2), stride=1)
         )
         
         self.hiddenLayer2 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(256, 256, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(256, 256, kernel_size=(3,3), stride=(2,1), padding=(0,1)),
+            nn.Conv2d(4, 8, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
             nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(2,2), stride=1)
         )
         
-        self.hiddenLayer3 = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=(3,3), stride=(1,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=(3,3), stride=(2,1), padding=(0,1)),
-            nn.LeakyReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(2,2), stride=1)
-        )
-        
-        self.fc1 = nn.Linear(in_features=512*68*4, out_features=2048)
+        self.fc1 = nn.Linear(in_features=8*592*5, out_features=2048)
         self.fc2 = nn.Linear(in_features=2048, out_features=256)
         self.fc3 = nn.Linear(in_features=256, out_features=16)
         self.fc4 = nn.Linear(in_features=16, out_features=6)
@@ -139,7 +121,6 @@ class HMSConvNN(nn.Module):
         
         x = self.hiddenLayer1(x)
         x = self.hiddenLayer2(x)
-        x = self.hiddenLayer3(x)
 
         # Fully connected layers
         x = torch.flatten(x, 1)
@@ -157,15 +138,24 @@ if __name__ == '__main__':
     start = time.time()
     dir_mydoc = fb.ChangeDir()
 
+    torch.manual_seed(43)
     trainLoader, testLoader, coding = DatasetPreparation()
 
     '''
     Model Training
     '''
-    dev = "cuda:0" if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        dev = 'cuda:0'
+        torch.cuda.manual_seed(43)
+        torch.cuda.manual_seed_all(43)
+    else:
+        dev = "cpu"
+
     device = torch.device(dev) 
 
     cnn = HMSConvNN().to(device)
+    summary(cnn, (1, 600, 7))
+
     lossFn = nn.CrossEntropyLoss()
     optimiser = optim.AdamW(cnn.parameters(), lr=learningRate, weight_decay=0)
 
@@ -182,19 +172,28 @@ if __name__ == '__main__':
         pbar = tqdm(trainLoader)
         for nBatch, data in enumerate(pbar):
 
-            pbar.set_description(f'Epoch {e}/{nEpoch}')
+            pbar.set_description(f'Epoch {e+1}/{nEpoch}')
             
             inputs, labels = data
             inputs = inputs.type(torch.float32).to(device)
             labels = labels.to(device)
-
-            predictions = cnn(inputs)
-            optimiser.zero_grad()
             
+            # Model training
+            l2_reg = 0
+            predictions = cnn(inputs)
             loss = lossFn(predictions, labels)
+            
+            # L2 regularisation
+            for param in cnn.parameters():
+                l2_reg += torch.norm(param, p=2)**2
+            loss += L2Lambda * l2_reg 
+
+            # Backpropagation
+            optimiser.zero_grad()
             loss.backward()
             optimiser.step()
 
+            # Accuracy & Loss
             trainingLoss += loss.item()
             total += labels.size(0)
             trainingAcc += (torch.argmax(cnn.softmax(predictions), 1) == labels).sum().item()
@@ -227,6 +226,6 @@ if __name__ == '__main__':
 
     end = time.time()
     print('='*20 + f' Program End {datetime.now().replace(microsecond=0)} ' + '='*20)
-    print(f'Execution time: {(end - start) // 60} min {(end - start) % 60} s')
+    print(f'Execution time: {int((end - start) // 60)} min {int((end - start) % 60)} s')
 
     pass
